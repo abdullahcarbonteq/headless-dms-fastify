@@ -10,7 +10,7 @@ export const UserRepository = {
       id: uuidv4(),
       name: data.name,
       email: data.email,
-      passwordHash: data.passwordHash,
+      password_hash: data.passwordHash,
       role: data.role,
     }).returning();
     return user;

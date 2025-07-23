@@ -21,7 +21,7 @@ export const UserService = {
     const user = await UserRepository.findByEmail(data.email);
     if (!user) throw new Error('Invalid email or password');
 
-    const valid = await bcrypt.compare(data.password, user.passwordHash);
+    const valid = await bcrypt.compare(data.password, user.password_hash);
     if (!valid) throw new Error('Invalid email or password');
 
     // Return user (or generate JWT here)
