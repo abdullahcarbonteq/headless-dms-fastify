@@ -4,6 +4,7 @@ import { InsertDocumentDTO } from './document.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, like, ilike, and, or } from 'drizzle-orm';
 
+
 export const DocumentRepository = {
   async create(data: InsertDocumentDTO) {
     const [doc] = await db.insert(documents).values({

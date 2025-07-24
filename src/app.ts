@@ -7,6 +7,8 @@ import swaggerUI from '@fastify/swagger-ui';
 import documentRoutes from './modules/document/document.routes';
 import userRoutes from './modules/user/user.routes';
 import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import { join } from 'path';
 // import your routes here when read
 
 const app = Fastify();
@@ -27,6 +29,10 @@ app.register(swaggerUI, {
   routePrefix: '/docs',
 });
 app.register(multipart);
+app.register(fastifyStatic, {
+  root: join(__dirname, '..', 'uploads'),
+  prefix: '/uploads/', // optional
+});
 
 // Register routes here, e.g.:
 app.register(documentRoutes, { prefix: '/api/documents' });

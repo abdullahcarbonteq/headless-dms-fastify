@@ -10,4 +10,6 @@ export default async function documentRoutes(app: FastifyInstance) {
   app.get('/', { preHandler: verifyJWT }, DocumentController.getAll);
   app.get('/search', { preHandler: verifyJWT }, DocumentController.search);
   app.delete('/:id', { preHandler: requireAdmin }, DocumentController.deleteById);
+  app.post('/:id/download-link', { preHandler: verifyJWT }, DocumentController.generateDownloadLink);
+  app.get('/download/:token', DocumentController.downloadDocument);
 }

@@ -29,6 +29,38 @@ export const DocumentController = {
     const docs = await DocumentRepository.search({ tags: tagArray, description });
     return reply.send({ documents: docs });
   },
+  async generateDownloadLink(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    // Optionally, check if the document exists
+    const docs = await DocumentRepository.getAll();
+    const doc = docs.find(d => d.id === id);
+    if (!doc) {
+      return reply.status(404).send({ error: 'Document not found' });
+    }
+    const token = await reply.server.jwt.sign(
+      { docId: id },
+      { expiresIn: '5m' }
+    );
+    const url = `/api/documents/download/${token}`;
+    return reply.send({ url });
+  },
+
+  async downloadDocument(req: FastifyRequest, reply: FastifyReply) {
+    const { token } = req.params as { token: string };
+    let payload: any;
+    try {
+      payload = await reply.server.jwt.verify(token);
+    } catch (err) {
+      return reply.status(401).send({ error: 'Invalid or expired download link' });
+    }
+    const docs = await DocumentRepository.getAll();
+    const doc = docs.find(d => d.id === payload.docId);
+    if (!doc) {
+      return reply.status(404).send({ error: 'Document not found' });
+    }
+    // Serve the file
+    return reply.sendFile(doc.path);
+  },
 };
 
 export async function minimalUploadHandler(req: FastifyRequest, reply: FastifyReply) {
