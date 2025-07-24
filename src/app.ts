@@ -5,7 +5,9 @@ import jwt from '@fastify/jwt';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import documentRoutes from './modules/document/document.routes';
-// import your routes here when ready
+import userRoutes from './modules/user/user.routes';
+import multipart from '@fastify/multipart';
+// import your routes here when read
 
 const app = Fastify();
 
@@ -24,8 +26,10 @@ app.register(swagger, {
 app.register(swaggerUI, {
   routePrefix: '/docs',
 });
+app.register(multipart);
 
 // Register routes here, e.g.:
 app.register(documentRoutes, { prefix: '/api/documents' });
+app.register(userRoutes, { prefix: '/api/users' });
 
 export default app;
