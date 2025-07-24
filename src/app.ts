@@ -6,7 +6,6 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import documentRoutes from './modules/document/document.routes';
 import userRoutes from './modules/user/user.routes';
-// import your routes here when ready
 
 const app = Fastify();
 

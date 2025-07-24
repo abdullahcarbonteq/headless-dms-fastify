@@ -24,8 +24,14 @@ export const UserController = {
     }
     try {
       const user = await UserService.login(parsed.data);
-      // TODO: Generate JWT and return it here
-      return reply.status(200).send({ message: 'Login successful', user });
+      // Generate JWT
+      const token = await reply.server.jwt.sign({
+        userId: user.id,
+        role: user.role,
+        email: user.email
+      });
+      // Return token (and optionally user info)
+      return reply.send({ message: 'Login successful', token });
     } catch (err: any) {
       return reply.status(400).send({ error: err.message });
     }
