@@ -5,9 +5,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const DocumentRepository = {
   async create(data: InsertDocumentDTO) {
-    await db.insert(documents).values({
+    const [doc] = await db.insert(documents).values({
       id: uuidv4(),
       ...data,
-    });
+    }).returning();
+    return doc;
   },
 };

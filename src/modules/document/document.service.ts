@@ -44,16 +44,46 @@ export const DocumentService = {
     if (!file || !fields.filename || !fields.mimetype) {
       return reply.status(400).send({ error: 'Missing file or required fields' });
     }
+    // Parse tags if present
+    let tagsString = '[]';
+    if (fields.tags) {
+      try {
+        if (typeof fields.tags === 'string') {
+          // Accept JSON array or comma-separated string
+          const parsed = JSON.parse(fields.tags);
+          if (Array.isArray(parsed)) {
+            tagsString = JSON.stringify(parsed.map(String));
+          } else if (typeof parsed === 'string') {
+            tagsString = JSON.stringify([parsed]);
+          } else {
+            tagsString = '[]';
+          }
+        } else {
+          tagsString = JSON.stringify(fields.tags);
+        }
+      } catch {
+        // fallback: comma-separated string
+        tagsString = JSON.stringify(fields.tags.split(',').map((t: string) => t.trim()));
+      }
+    }
+    const description = fields.description || undefined;
+
     // Zod schema validation
     const validation = uploadSchema.safeParse({
       filename: fields.filename,
       mimetype: fields.mimetype,
-      path: file ? file.path : ''
+      path: file ? file.path : '',
+      tags: tagsString,
+      description,
     });
     if (!validation.success) {
       return reply.status(400).send({ error: validation.error.format() });
     }
-    await DocumentRepository.create(validation.data);
-    return reply.code(201).send({ message: 'Document uploaded successfully' });
+    // Save and return the full document info
+    const doc = await DocumentRepository.create(validation.data);
+    return reply.code(201).send({
+      message: 'Document uploaded successfully',
+      document: doc,
+    });
   },
 };

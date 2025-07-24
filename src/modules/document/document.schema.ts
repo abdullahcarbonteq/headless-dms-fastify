@@ -5,5 +5,7 @@ export const documents = pgTable('documents', {
   filename: text('filename').notNull(),
   mimetype: text('mimetype').notNull(),
   path: text('path').notNull(),
+  tags: text('tags').default('[]'),
+  description: text('description'),
   createdAt: timestamp('created_at').defaultNow(),
 });
