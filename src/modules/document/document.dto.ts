@@ -6,4 +6,4 @@ export const uploadSchema = z.object({
   path: z.string().min(1),
 });
 
-export type UploadDTO = z.infer<typeof uploadSchema>;
+export type InsertDocumentDTO = z.infer<typeof uploadSchema>;
