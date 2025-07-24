@@ -37,6 +37,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^24.1.0",
     "@types/uuid": "^10.0.0",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
