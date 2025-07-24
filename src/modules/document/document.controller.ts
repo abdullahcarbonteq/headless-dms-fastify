@@ -23,6 +23,12 @@ export const DocumentController = {
     }
     return reply.send({ message: 'Document deleted successfully' });
   },
+  async search(req: FastifyRequest, reply: FastifyReply) {
+    const { tags, description } = req.query as { tags?: string; description?: string };
+    const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined;
+    const docs = await DocumentRepository.search({ tags: tagArray, description });
+    return reply.send({ documents: docs });
+  },
 };
 
 export async function minimalUploadHandler(req: FastifyRequest, reply: FastifyReply) {
