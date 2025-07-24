@@ -1,4 +1,15 @@
 CREATE TYPE "public"."role" AS ENUM('admin', 'user');--> statement-breakpoint
+CREATE TABLE "documents" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"filename" text NOT NULL,
+	"mimetype" text NOT NULL,
+	"path" text NOT NULL,
+	"tags" text DEFAULT '[]',
+	"description" text,
+	"user_id" text NOT NULL,
+	"created_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
@@ -8,6 +19,3 @@ CREATE TABLE "users" (
 	"created_at" timestamp DEFAULT now(),
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
---> statement-breakpoint
-ALTER TABLE "documents" ADD COLUMN "tags" text DEFAULT '[]';--> statement-breakpoint
-ALTER TABLE "documents" ADD COLUMN "description" text;

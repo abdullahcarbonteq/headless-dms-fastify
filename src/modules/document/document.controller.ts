@@ -11,6 +11,10 @@ export const DocumentController = {
   async upload(req: FastifyRequest, reply: FastifyReply) {
     return DocumentService.uploadDocument(req, reply);
   },
+  async getAll(req: FastifyRequest, reply: FastifyReply) {
+    const docs = await DocumentRepository.getAll();
+    return reply.send({ documents: docs });
+  },
 };
 
 export async function minimalUploadHandler(req: FastifyRequest, reply: FastifyReply) {

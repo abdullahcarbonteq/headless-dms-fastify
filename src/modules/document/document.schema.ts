@@ -7,5 +7,7 @@ export const documents = pgTable('documents', {
   path: text('path').notNull(),
   tags: text('tags').default('[]'),
   description: text('description'),
+  userId: text('user_id').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
+  //dummy: text('dummy').default('dummy'),
 });

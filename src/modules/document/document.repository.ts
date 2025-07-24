@@ -11,4 +11,7 @@ export const DocumentRepository = {
     }).returning();
     return doc;
   },
+  async getAll() {
+    return db.select().from(documents);
+  },
 };

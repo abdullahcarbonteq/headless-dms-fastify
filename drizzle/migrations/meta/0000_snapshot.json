@@ -1,5 +1,5 @@
 {
-  "id": "8daa010e-5c0a-42a1-b09a-d15cc32dbac0",
+  "id": "a5d518a1-ceec-4e55-9c4c-ae48b7a4a6db",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -28,6 +28,25 @@
         },
         "path": {
           "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true

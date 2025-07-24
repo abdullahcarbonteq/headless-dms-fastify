@@ -79,8 +79,13 @@ export const DocumentService = {
     if (!validation.success) {
       return reply.status(400).send({ error: validation.error.format() });
     }
+    // Inject userId from authenticated user
+    const userId = req.user?.userId;
+    if (!userId) {
+      return reply.status(401).send({ error: 'Unauthorized: No userId found' });
+    }
     // Save and return the full document info
-    const doc = await DocumentRepository.create(validation.data);
+    const doc = await DocumentRepository.create({ ...validation.data, userId });
     return reply.code(201).send({
       message: 'Document uploaded successfully',
       document: doc,
