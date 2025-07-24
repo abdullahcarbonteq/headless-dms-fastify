@@ -15,6 +15,14 @@ export const DocumentController = {
     const docs = await DocumentRepository.getAll();
     return reply.send({ documents: docs });
   },
+  async deleteById(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const result = await DocumentRepository.deleteById(id);
+    if (result.rowCount === 0) {
+      return reply.status(404).send({ error: 'Document not found' });
+    }
+    return reply.send({ message: 'Document deleted successfully' });
+  },
 };
 
 export async function minimalUploadHandler(req: FastifyRequest, reply: FastifyReply) {
