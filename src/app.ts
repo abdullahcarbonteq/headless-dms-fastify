@@ -5,12 +5,9 @@ import jwt from '@fastify/jwt';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import documentRoutes from './modules/document/document.routes';
-<<<<<<< HEAD
-import multipart from '@fastify/multipart';
-// import your routes here when ready
-=======
 import userRoutes from './modules/user/user.routes';
->>>>>>> feature/user-auth
+import multipart from '@fastify/multipart';
+// import your routes here when read
 
 const app = Fastify();
 
