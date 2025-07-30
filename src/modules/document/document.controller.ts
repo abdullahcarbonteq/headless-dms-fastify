@@ -3,6 +3,10 @@ import { DocumentService } from './services/document.service.js';
 import { FileUploadService } from './services/fileUpload.service.js';
 import { FileHandlerService } from './services/fileHandler.service.js';
 import { Result } from '@carbonteq/fp';
+import { container } from '../../config/container.js';
+
+// Get service instance from DI container
+const documentService = container.resolve(DocumentService);
 
 export const DocumentController = {
   async upload(req: FastifyRequest, reply: FastifyReply) {
@@ -46,7 +50,7 @@ export const DocumentController = {
       }
 
       // Save document to database
-      const documentResult = await DocumentService.uploadDocument(uploadResult.unwrap());
+      const documentResult = await documentService.uploadDocument(uploadResult.unwrap());
       
       if (documentResult.isOk()) {
         return reply.status(201).send({
@@ -62,7 +66,7 @@ export const DocumentController = {
   },
 
   async getAll(req: FastifyRequest, reply: FastifyReply) {
-    const result = await DocumentService.getAllDocuments();
+    const result = await documentService.getAllDocuments();
     
     if (result.isOk()) {
       return reply.send({ documents: result.unwrap() });
@@ -73,7 +77,7 @@ export const DocumentController = {
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
     const { id } = req.params as { id: string };
-    const result = await DocumentService.getDocumentById(id);
+    const result = await documentService.getDocumentById(id);
     
     if (result.isOk()) {
       const document = result.unwrap();
@@ -88,7 +92,7 @@ export const DocumentController = {
 
   async deleteById(req: FastifyRequest, reply: FastifyReply) {
     const { id } = req.params as { id: string };
-    const result = await DocumentService.deleteDocument(id);
+    const result = await documentService.deleteDocument(id);
     
     if (result.isOk()) {
       const deleted = result.unwrap();
@@ -106,7 +110,7 @@ export const DocumentController = {
     const { tags, description } = req.query as { tags?: string; description?: string };
     const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined;
     
-    const result = await DocumentService.searchDocuments({ tags: tagArray, description });
+    const result = await documentService.searchDocuments({ tags: tagArray, description });
     
     if (result.isOk()) {
       return reply.send({ documents: result.unwrap() });
@@ -118,7 +122,7 @@ export const DocumentController = {
   async generateDownloadLink(req: FastifyRequest, reply: FastifyReply) {
     const { id } = req.params as { id: string };
     
-    const result = await DocumentService.getDocumentById(id);
+    const result = await documentService.getDocumentById(id);
     
     if (result.isOk()) {
       const document = result.unwrap();
@@ -146,7 +150,7 @@ export const DocumentController = {
       return reply.status(401).send({ error: 'Invalid or expired download link' });
     }
     
-    const result = await DocumentService.getDocumentById(payload.docId);
+    const result = await documentService.getDocumentById(payload.docId);
     
     if (result.isOk()) {
       const document = result.unwrap();

@@ -3,6 +3,10 @@ import { registerSchema } from './dto/register.dto.js';
 import { loginSchema } from './dto/login.dto.js';
 import { UserService } from './user.service.js';
 import { Result } from '@carbonteq/fp';
+import { container } from '../../config/container.js';
+
+// Get service instance from DI container
+const userService = container.resolve(UserService);
 
 export const UserController = {
   async register(req: FastifyRequest, reply: FastifyReply) {
@@ -11,7 +15,7 @@ export const UserController = {
       return reply.status(400).send({ error: parsed.error.format() });
     }
     
-    const result = await UserService.register(parsed.data);
+    const result = await userService.register(parsed.data);
     
     if (result.isOk()) {
       return reply.status(201).send({ message: 'User registered', user: result.unwrap() });
@@ -26,7 +30,7 @@ export const UserController = {
       return reply.status(400).send({ error: parsed.error.format() });
     }
     
-    const result = await UserService.login(parsed.data);
+    const result = await userService.login(parsed.data);
     
     if (result.isOk()) {
       // Generate JWT

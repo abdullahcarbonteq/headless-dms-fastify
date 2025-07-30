@@ -1,25 +1,27 @@
 // src/server.ts
+import 'reflect-metadata';
 import app from './app.js';
 import { config } from './config/index.js';
+import { container } from './config/container.js';
+import { ILogger } from './shared/interfaces/ILogger.js';
 
 const PORT = config.server.port;
 
+// Initialize DI container and get logger
+const logger = container.resolve<ILogger>('ILogger');
+
 app.listen({ port: PORT, host: '0.0.0.0' })
   .then(() => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`📁 Upload directory: ${config.app.upload.uploadDir}`);
-    console.log(`📏 Max file size: ${config.app.upload.maxFileSize / (1024 * 1024)}MB`);
-    console.log(`📄 Allowed file types: ${config.app.upload.allowedMimeTypes.join(', ')}`);
-    console.log(`🌍 CORS origin: ${config.app.cors.origin}`);
-    console.log(`🔧 Environment: ${config.app.environment}`);
-    console.log(`📝 Log level: ${config.app.logging.level}`);
-    console.log(`📝 Log format: ${config.app.logging.format}`);
-    console.log(`📝 Log file enabled: ${config.app.logging.enableFile}`);
-    if (config.app.logging.enableFile && config.app.logging.filePath) {
-      console.log(`📝 Log file path: ${config.app.logging.filePath}`);
-    }
+    logger.info('🚀 Server started successfully', { 
+      port: PORT,
+      environment: config.app.environment,
+      uploadDir: config.app.upload.uploadDir,
+      maxFileSize: `${config.app.upload.maxFileSize / (1024 * 1024)}MB`,
+      logLevel: config.app.logging.level,
+      logFileEnabled: config.app.logging.enableFile
+    });
   })
   .catch((err) => {
-    console.error('Error starting server:', err);
+    logger.error('❌ Failed to start server', err);
     process.exit(1);
   });
