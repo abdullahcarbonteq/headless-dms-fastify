@@ -4,6 +4,7 @@ import { ILogger } from '../../../shared/interfaces/ILogger.js';
 import { InsertDocumentDTO } from '../document.dto.js';
 import { IDocumentService, Document } from '../interfaces/IDocumentService.js';
 import { Result } from '@carbonteq/fp';
+import { PaginationOptions, PaginatedResult } from '../interfaces/IDocumentRepository.js';
 
 @injectable()
 export class DocumentService implements IDocumentService {
@@ -49,20 +50,29 @@ export class DocumentService implements IDocumentService {
     }
   }
 
-  async getAllDocuments(): Promise<Result<Document[], Error>> {
-    this.logger.info('Retrieving all documents');
+  async getAllDocuments(pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>> {
+    this.logger.info('Retrieving documents', { pagination });
     
     try {
       this.logger.debug('Fetching documents from repository');
-      const documentsResult = await this.documentRepository.getAllDocuments();
+      const documentsResult = await this.documentRepository.getAllDocuments(pagination);
       if (documentsResult.isErr()) {
         this.logger.error('Failed to get documents', documentsResult.unwrapErr());
         return Result.Err(new Error('Failed to get documents'));
       }
       
-      const documents = documentsResult.unwrap() as Document[];
-      this.logger.info('Retrieved all documents successfully', { count: documents.length });
-      return Result.Ok(documents);
+      const result = documentsResult.unwrap();
+      if (Array.isArray(result)) {
+        this.logger.info('Retrieved all documents successfully', { count: result.length });
+      } else {
+        this.logger.info('Retrieved paginated documents successfully', { 
+          count: result.data.length,
+          page: result.page,
+          totalPages: result.totalPages,
+          total: result.total
+        });
+      }
+      return Result.Ok(result);
     } catch (error) {
       this.logger.error('Unexpected error getting documents', error instanceof Error ? error : new Error('Unknown error'));
       return Result.Err(error instanceof Error ? error : new Error('Failed to get documents'));
@@ -93,23 +103,33 @@ export class DocumentService implements IDocumentService {
     }
   }
 
-  async searchDocuments(criteria: { tags?: string[]; description?: string }): Promise<Result<Document[], Error>> {
-    this.logger.info('Starting document search', { criteria });
+  async searchDocuments(criteria: { tags?: string[]; description?: string }, pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>> {
+    this.logger.info('Starting document search', { criteria, pagination });
     
     try {
       this.logger.debug('Searching documents in repository');
-      const searchResult = await this.documentRepository.searchDocuments(criteria);
+      const searchResult = await this.documentRepository.searchDocuments(criteria, pagination);
       if (searchResult.isErr()) {
         this.logger.error('Failed to search documents', searchResult.unwrapErr(), { criteria });
         return Result.Err(new Error('Failed to search documents'));
       }
       
-      const documents = searchResult.unwrap() as Document[];
-      this.logger.info('Document search completed successfully', { 
-        criteria, 
-        count: documents.length 
-      });
-      return Result.Ok(documents);
+      const result = searchResult.unwrap();
+      if (Array.isArray(result)) {
+        this.logger.info('Document search completed successfully', { 
+          criteria, 
+          count: result.length 
+        });
+      } else {
+        this.logger.info('Document search completed successfully', { 
+          criteria,
+          count: result.data.length,
+          page: result.page,
+          totalPages: result.totalPages,
+          total: result.total
+        });
+      }
+      return Result.Ok(result);
     } catch (error) {
       this.logger.error('Unexpected error searching documents', error instanceof Error ? error : new Error('Unknown error'), { criteria });
       return Result.Err(error instanceof Error ? error : new Error('Failed to search documents'));

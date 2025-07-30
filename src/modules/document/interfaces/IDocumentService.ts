@@ -1,6 +1,7 @@
 import { InsertDocumentDTO } from '../document.dto.js';
 import { documents } from '../document.schema.js';
 import { Result } from '@carbonteq/fp';
+import { PaginationOptions, PaginatedResult } from '../interfaces/IDocumentRepository.js';
 
 // Document type based on the schema
 export type Document = typeof documents.$inferSelect;
@@ -14,10 +15,11 @@ export interface IDocumentService {
   uploadDocument(data: InsertDocumentDTO): Promise<Result<Document, Error>>;
 
   /**
-   * Get all documents
-   * @returns Promise<Result<Document[], Error>> - Success with documents array or error
+   * Get all documents with optional pagination
+   * @param pagination - Optional pagination options
+   * @returns Promise<Result<Document[] | PaginatedResult<Document>, Error>> - Success with documents or error
    */
-  getAllDocuments(): Promise<Result<Document[], Error>>;
+  getAllDocuments(pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>>;
 
   /**
    * Delete document by ID
@@ -27,11 +29,12 @@ export interface IDocumentService {
   deleteDocument(id: string): Promise<Result<boolean, Error>>;
 
   /**
-   * Search documents by criteria
+   * Search documents by criteria with optional pagination
    * @param criteria - Search criteria (tags, description)
-   * @returns Promise<Result<Document[], Error>> - Success with matching documents or error
+   * @param pagination - Optional pagination options
+   * @returns Promise<Result<Document[] | PaginatedResult<Document>, Error>> - Success with matching documents or error
    */
-  searchDocuments(criteria: { tags?: string[]; description?: string }): Promise<Result<Document[], Error>>;
+  searchDocuments(criteria: { tags?: string[]; description?: string }, pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>>;
 
   /**
    * Get document by ID

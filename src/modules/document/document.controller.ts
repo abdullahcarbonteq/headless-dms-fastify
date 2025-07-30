@@ -4,6 +4,7 @@ import { FileUploadService } from './services/fileUpload.service.js';
 import { FileHandlerService } from './services/fileHandler.service.js';
 import { Result } from '@carbonteq/fp';
 import { container } from '../../config/container.js';
+import { paginationQuerySchema, type PaginationQuery } from '../../shared/dto/pagination.dto.js';
 
 // Get service instance from DI container
 const documentService = container.resolve(DocumentService);
@@ -66,10 +67,37 @@ export const DocumentController = {
   },
 
   async getAll(req: FastifyRequest, reply: FastifyReply) {
-    const result = await documentService.getAllDocuments();
+    // Parse pagination query parameters
+    const paginationQuery = paginationQuerySchema.safeParse(req.query);
+    if (!paginationQuery.success) {
+      return reply.status(400).send({ error: 'Invalid pagination parameters' });
+    }
+
+    const result = await documentService.getAllDocuments(paginationQuery.data);
     
     if (result.isOk()) {
-      return reply.send({ documents: result.unwrap() });
+      const data = result.unwrap();
+      if (Array.isArray(data)) {
+        // No pagination requested, return simple array
+        return reply.send({ 
+          success: true,
+          documents: data 
+        });
+      } else {
+        // Paginated result
+        return reply.send({
+          success: true,
+          documents: data.data,
+          pagination: {
+            page: data.page,
+            limit: data.limit,
+            total: data.total,
+            totalPages: data.totalPages,
+            hasNext: data.page < data.totalPages,
+            hasPrev: data.page > 1
+          }
+        });
+      }
     } else {
       return reply.status(500).send({ error: result.unwrapErr().message });
     }
@@ -110,10 +138,40 @@ export const DocumentController = {
     const { tags, description } = req.query as { tags?: string; description?: string };
     const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined;
     
-    const result = await documentService.searchDocuments({ tags: tagArray, description });
+    // Parse pagination query parameters
+    const paginationQuery = paginationQuerySchema.safeParse(req.query);
+    if (!paginationQuery.success) {
+      return reply.status(400).send({ error: 'Invalid pagination parameters' });
+    }
+    
+    const result = await documentService.searchDocuments(
+      { tags: tagArray, description }, 
+      paginationQuery.data
+    );
     
     if (result.isOk()) {
-      return reply.send({ documents: result.unwrap() });
+      const data = result.unwrap();
+      if (Array.isArray(data)) {
+        // No pagination requested, return simple array
+        return reply.send({ 
+          success: true,
+          documents: data 
+        });
+      } else {
+        // Paginated result
+        return reply.send({
+          success: true,
+          documents: data.data,
+          pagination: {
+            page: data.page,
+            limit: data.limit,
+            total: data.total,
+            totalPages: data.totalPages,
+            hasNext: data.page < data.totalPages,
+            hasPrev: data.page > 1
+          }
+        });
+      }
     } else {
       return reply.status(500).send({ error: result.unwrapErr().message });
     }
