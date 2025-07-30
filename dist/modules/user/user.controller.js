@@ -7,12 +7,12 @@ export const UserController = {
         if (!parsed.success) {
             return reply.status(400).send({ error: parsed.error.format() });
         }
-        try {
-            const user = await UserService.register(parsed.data);
-            return reply.status(201).send({ message: 'User registered', user });
+        const result = await UserService.register(parsed.data);
+        if (result.isOk()) {
+            return reply.status(201).send({ message: 'User registered', user: result.unwrap() });
         }
-        catch (err) {
-            return reply.status(400).send({ error: err.message });
+        else {
+            return reply.status(400).send({ error: result.unwrapErr().message });
         }
     },
     async login(req, reply) {
@@ -20,19 +20,19 @@ export const UserController = {
         if (!parsed.success) {
             return reply.status(400).send({ error: parsed.error.format() });
         }
-        try {
-            const user = await UserService.login(parsed.data);
+        const result = await UserService.login(parsed.data);
+        if (result.isOk()) {
             // Generate JWT
             const token = await reply.server.jwt.sign({
-                userId: user.id,
-                role: user.role,
-                email: user.email
+                userId: result.unwrap().id,
+                role: result.unwrap().role,
+                email: result.unwrap().email
             });
             // Return token (and optionally user info)
             return reply.send({ message: 'Login successful', token });
         }
-        catch (err) {
-            return reply.status(400).send({ error: err.message });
+        else {
+            return reply.status(400).send({ error: result.unwrapErr().message });
         }
     }
 };

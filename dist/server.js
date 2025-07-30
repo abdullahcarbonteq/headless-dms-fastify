@@ -10,6 +10,12 @@ app.listen({ port: PORT, host: '0.0.0.0' })
     console.log(`📄 Allowed file types: ${config.app.upload.allowedMimeTypes.join(', ')}`);
     console.log(`🌍 CORS origin: ${config.app.cors.origin}`);
     console.log(`🔧 Environment: ${config.app.environment}`);
+    console.log(`📝 Log level: ${config.app.logging.level}`);
+    console.log(`📝 Log format: ${config.app.logging.format}`);
+    console.log(`📝 Log file enabled: ${config.app.logging.enableFile}`);
+    if (config.app.logging.enableFile && config.app.logging.filePath) {
+        console.log(`📝 Log file path: ${config.app.logging.filePath}`);
+    }
 })
     .catch((err) => {
     console.error('Error starting server:', err);

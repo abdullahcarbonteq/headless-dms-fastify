@@ -20,18 +20,20 @@ function loadConfig() {
             environment: process.env.NODE_ENV,
             cors: {
                 origin: process.env.CORS_ORIGIN,
-                credentials: process.env.CORS_CREDENTIALS,
+                credentials: process.env.CORS_CREDENTIALS === 'true',
             },
             logging: {
                 level: process.env.LOG_LEVEL,
                 format: process.env.LOG_FORMAT,
-                enableConsole: process.env.LOG_ENABLE_CONSOLE,
-                enableFile: process.env.LOG_ENABLE_FILE,
+                enableConsole: process.env.LOG_ENABLE_CONSOLE === 'true',
+                enableFile: process.env.LOG_ENABLE_FILE === 'true',
                 filePath: process.env.LOG_FILE_PATH,
             },
             upload: {
                 maxFileSize: process.env.UPLOAD_MAX_FILE_SIZE,
-                allowedMimeTypes: process.env.UPLOAD_ALLOWED_MIME_TYPES,
+                allowedMimeTypes: process.env.UPLOAD_ALLOWED_MIME_TYPES
+                    ? process.env.UPLOAD_ALLOWED_MIME_TYPES.split(',').map(type => type.trim())
+                    : undefined,
                 uploadDir: process.env.UPLOAD_DIR,
                 maxFiles: process.env.UPLOAD_MAX_FILES,
             },

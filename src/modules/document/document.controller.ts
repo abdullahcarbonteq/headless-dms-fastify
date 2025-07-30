@@ -71,6 +71,21 @@ export const DocumentController = {
     }
   },
 
+  async getById(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const result = await DocumentService.getDocumentById(id);
+    
+    if (result.isOk()) {
+      const document = result.unwrap();
+      if (!document) {
+        return reply.status(404).send({ error: 'Document not found' });
+      }
+      return reply.send({ document });
+    } else {
+      return reply.status(500).send({ error: result.unwrapErr().message });
+    }
+  },
+
   async deleteById(req: FastifyRequest, reply: FastifyReply) {
     const { id } = req.params as { id: string };
     const result = await DocumentService.deleteDocument(id);
