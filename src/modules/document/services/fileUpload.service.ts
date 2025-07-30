@@ -1,7 +1,7 @@
-import { IFileUploadService, FileUploadData } from './interfaces/IFileUploadService.js';
-import { InsertDocumentDTO, uploadSchema } from './document.dto.js';
+import { IFileUploadService, FileUploadData } from '../interfaces/IFileUploadService.js';
+import { InsertDocumentDTO, uploadSchema } from '../document.dto.js';
 import { Result } from '@carbonteq/fp';
-import { config } from '../../config/index.js';
+import { config } from '../../../config/index.js';
 
 export const FileUploadService: IFileUploadService = {
   async processFileUpload(fileData: FileUploadData): Promise<Result<InsertDocumentDTO, Error>> {

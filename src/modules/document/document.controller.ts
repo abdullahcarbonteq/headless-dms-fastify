@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { DocumentService } from './document.service.js';
-import { FileUploadService } from './fileUpload.service.js';
-import { FileHandlerService } from './fileHandler.service.js';
+import { DocumentService } from './services/document.service.js';
+import { FileUploadService } from './services/fileUpload.service.js';
+import { FileHandlerService } from './services/fileHandler.service.js';
 import { Result } from '@carbonteq/fp';
 
 export const DocumentController = {

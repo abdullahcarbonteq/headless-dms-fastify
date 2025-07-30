@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { config } from '../../config/index.js';
+import { config } from '../../../config/index.js';
 import { MultipartFile } from '@fastify/multipart';
 
 export interface FileInfo {

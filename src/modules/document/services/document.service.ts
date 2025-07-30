@@ -1,8 +1,8 @@
-import { DocumentRepository } from './document.repository.js';
-import { InsertDocumentDTO } from './document.dto.js';
-import { IDocumentService, Document } from './interfaces/IDocumentService.js';
+import { DocumentRepository } from '../document.repository.js';
+import { InsertDocumentDTO } from '../document.dto.js';
+import { IDocumentService, Document } from '../interfaces/IDocumentService.js';
 import { Result } from '@carbonteq/fp';
-import { config } from '../../config/index.js';
+import { config } from '../../../config/index.js';
 
 export const DocumentService: IDocumentService = {
   async uploadDocument(data: InsertDocumentDTO): Promise<Result<Document, Error>> {
