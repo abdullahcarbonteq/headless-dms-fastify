@@ -1,11 +1,11 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { uploadSchema } from './document.dto';
-import { DocumentService } from './document.service';
+import { uploadSchema } from './document.dto.js';
+import { DocumentService } from './document.service.js';
 import { MultipartFile } from '@fastify/multipart';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { DocumentRepository } from './document.repository';
+import { DocumentRepository } from './document.repository.js';
 
 export const DocumentController = {
   async upload(req: FastifyRequest, reply: FastifyReply) {

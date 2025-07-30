@@ -1,6 +1,6 @@
-import { db } from '@/config/db'
-import { users } from './user.schema';
-import { RegisterDTO } from './dto/register.dto';
+import { db } from '../../config/db.js'
+import { users } from './user.schema.js';
+import { RegisterDTO } from './dto/register.dto.js';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 

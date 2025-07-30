@@ -1,9 +1,10 @@
 import { MultipartFile } from '@fastify/multipart';
-import { DocumentRepository } from './document.repository';
-import { InsertDocumentDTO, uploadSchema } from './document.dto';
+import { DocumentRepository } from './document.repository.js';
+import { InsertDocumentDTO, uploadSchema } from './document.dto.js';
 import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { config } from '../../config/index.js';
 
 export const DocumentService = {
   async uploadDocument(req: any, reply: any) {
@@ -11,7 +12,7 @@ export const DocumentService = {
     const { v4: uuidv4 } = await import('uuid');
     const path = await import('path');
     const fs = await import('fs');
-    const { DocumentRepository } = await import('./document.repository');
+    const { DocumentRepository } = await import('./document.repository.js');
 
     const parts = req.parts();
     let file: any = null;
@@ -20,8 +21,8 @@ export const DocumentService = {
     for await (const part of parts) {
       if (part.type === 'file') {
         const uniqueName = `${Date.now()}-${uuidv4()}${path.default.extname(part.filename)}`;
-        const uploadPath = path.default.join('uploads', uniqueName);
-        await fs.promises.mkdir('uploads', { recursive: true });
+        const uploadPath = path.default.join(config.app.upload.uploadDir, uniqueName);
+        await fs.promises.mkdir(config.app.upload.uploadDir, { recursive: true });
         const writeStream = fs.createWriteStream(uploadPath);
         part.file.pipe(writeStream);
         await new Promise<void>((resolve, reject) => {
@@ -43,6 +44,20 @@ export const DocumentService = {
 
     if (!file || !fields.filename || !fields.mimetype) {
       return reply.status(400).send({ error: 'Missing file or required fields' });
+    }
+
+    // Validate file size
+    if (file.size > config.app.upload.maxFileSize) {
+      return reply.status(400).send({ 
+        error: `File too large. Maximum size is ${config.app.upload.maxFileSize / (1024 * 1024)}MB` 
+      });
+    }
+
+    // Validate file type
+    if (!config.app.upload.allowedMimeTypes.includes(file.mimetype)) {
+      return reply.status(400).send({ 
+        error: `File type not allowed. Allowed types: ${config.app.upload.allowedMimeTypes.join(', ')}` 
+      });
     }
     // Parse tags if present
     let tagsString = '[]';
@@ -68,24 +83,26 @@ export const DocumentService = {
     }
     const description = fields.description || undefined;
 
-    // Zod schema validation
+    // Extract userId from authenticated user before validation
+    const userId = req.user?.userId;
+    if (!userId) {
+      return reply.status(401).send({ error: 'Unauthorized: No userId found' });
+    }
+
+    // Zod schema validation (now includes userId)
     const validation = uploadSchema.safeParse({
       filename: fields.filename,
       mimetype: fields.mimetype,
       path: file ? file.path : '',
       tags: tagsString,
       description,
+      userId, // <-- include userId here!
     });
     if (!validation.success) {
       return reply.status(400).send({ error: validation.error.format() });
     }
-    // Inject userId from authenticated user
-    const userId = req.user?.userId;
-    if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized: No userId found' });
-    }
     // Save and return the full document info
-    const doc = await DocumentRepository.create({ ...validation.data, userId });
+    const doc = await DocumentRepository.create(validation.data);
     return reply.code(201).send({
       message: 'Document uploaded successfully',
       document: doc,

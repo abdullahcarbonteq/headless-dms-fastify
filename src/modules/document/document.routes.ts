@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify';
-import { DocumentController } from './document.controller';
-import { minimalUploadHandler } from './document.controller';
-import { requireAdmin } from '../../utils/middlewares/auth';
-import { verifyJWT } from '../../middlewares/auth';
+import { DocumentController } from './document.controller.js';
+import { minimalUploadHandler } from './document.controller.js';
+import { requireAdmin } from '../../utils/middlewares/auth.js';
+import { verifyJWT } from '../../middlewares/auth.js';
 
 export default async function documentRoutes(app: FastifyInstance) {
   app.post('/upload', { preHandler: requireAdmin }, DocumentController.upload);

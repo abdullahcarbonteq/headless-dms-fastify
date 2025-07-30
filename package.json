@@ -1,6 +1,7 @@
 {
   "name": "headless-dms-fastify",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch -r dotenv/config -r tsconfig-paths/register src/server.ts",
@@ -21,6 +22,7 @@
   "homepage": "https://github.com/abdullahcarbonteq/headless-dms-fastify#readme",
   "description": "",
   "dependencies": {
+    "@carbonteq/fp": "^0.8.2",
     "@fastify/cors": "^11.0.1",
     "@fastify/jwt": "^9.1.0",
     "@fastify/multipart": "^9.0.3",

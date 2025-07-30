@@ -1,6 +1,6 @@
-import { UserRepository } from './user.repository';
-import { RegisterDTO } from './dto/register.dto';
-import { LoginDTO } from './dto/login.dto';
+import { UserRepository } from './user.repository.js';
+import { RegisterDTO } from './dto/register.dto.js';
+import { LoginDTO } from './dto/login.dto.js';
 import bcrypt from 'bcrypt';
 
 export const UserService = {

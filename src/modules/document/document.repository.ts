@@ -1,6 +1,6 @@
-import { db } from '@/config/db';
-import { documents } from './document.schema';
-import { InsertDocumentDTO } from './document.dto';
+import { db } from '../../config/db.js';
+import { documents } from './document.schema.js';
+import { InsertDocumentDTO } from './document.dto.js';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, like, ilike, and, or } from 'drizzle-orm';
 
@@ -9,7 +9,12 @@ export const DocumentRepository = {
   async create(data: InsertDocumentDTO) {
     const [doc] = await db.insert(documents).values({
       id: uuidv4(),
-      ...data,
+      filename: data.filename,
+      mimetype: data.mimetype,
+      path: data.path,
+      tags: data.tags,
+      description: data.description,
+      userId: data.userId,
     }).returning();
     return doc;
   },

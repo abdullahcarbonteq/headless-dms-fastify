@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { UserController } from './user.controller';
-import { verifyJWT, requireAdmin } from '../../utils/middlewares/auth';
+import { UserController } from './user.controller.js';
+import { verifyJWT, requireAdmin } from '../../utils/middlewares/auth.js';
 
 export default async function userRoutes(app: FastifyInstance) {
   app.post('/register', UserController.register);

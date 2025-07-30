@@ -4,18 +4,23 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import documentRoutes from './modules/document/document.routes';
-import userRoutes from './modules/user/user.routes';
+import documentRoutes from './modules/document/document.routes.js';
+import userRoutes from './modules/user/user.routes.js';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { config } from './config/index.js';
 // import your routes here when read
 
 const app = Fastify();
 
 // Register plugins
-app.register(cors);
-app.register(jwt, { secret: process.env.JWT_SECRET || 'supersecret' });
+app.register(cors, {
+  origin: config.app.cors.origin,
+  credentials: config.app.cors.credentials,
+});
+app.register(jwt, { secret: config.jwt.secret });
 app.register(swagger, {
   swagger: {
     info: {
@@ -30,7 +35,7 @@ app.register(swaggerUI, {
 });
 app.register(multipart);
 app.register(fastifyStatic, {
-  root: join(__dirname, '..', 'uploads'),
+  root: join(dirname(fileURLToPath(import.meta.url)), '..', config.app.upload.uploadDir),
   prefix: '/uploads/', // optional
 });
 

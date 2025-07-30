@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { registerSchema } from './dto/register.dto';
-import { loginSchema } from './dto/login.dto';
-import { UserService } from './user.service';
+import { registerSchema } from './dto/register.dto.js';
+import { loginSchema } from './dto/login.dto.js';
+import { UserService } from './user.service.js';
 
 export const UserController = {
   async register(req: FastifyRequest, reply: FastifyReply) {
