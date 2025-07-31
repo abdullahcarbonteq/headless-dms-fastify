@@ -7,11 +7,9 @@ type JWTPayload = {
 };
 
 export async function verifyJWT(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
+  await request.jwtVerify().catch(() => {
     return reply.status(401).send({ error: 'Unauthorized' });
-  }
+  });
 }
 
 export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {

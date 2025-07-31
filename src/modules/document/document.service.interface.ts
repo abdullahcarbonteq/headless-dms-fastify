@@ -2,6 +2,7 @@ import { InsertDocumentDTO } from './document.dto.js';
 import { documents } from './document.schema.js';
 import { Result } from '@carbonteq/fp';
 import { PaginationOptions, PaginatedResult } from './document.repository.interface.js';
+import { FastifyRequest } from 'fastify';
 
 // Document type based on the schema
 export type Document = typeof documents.$inferSelect;
@@ -42,4 +43,11 @@ export interface IDocumentService {
    * @returns Promise<Result<Document | null, Error>> - Success with document or null, or error
    */
   getDocumentById(id: string): Promise<Result<Document | null, Error>>;
+
+  /**
+   * Complete file upload handler - processes multipart request and saves document
+   * @param req - Fastify request with multipart data
+   * @returns Promise<Result<Document, Error>> - Created document or error
+   */
+  handleFileUpload(req: FastifyRequest): Promise<Result<Document, Error>>;
 } 

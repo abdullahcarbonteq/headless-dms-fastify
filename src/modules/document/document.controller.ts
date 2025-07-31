@@ -9,58 +9,15 @@ const documentService = container.resolve(DocumentService);
 
 export const DocumentController = {
   async upload(req: FastifyRequest, reply: FastifyReply) {
-    try {
-      const parts = req.parts();
-      let file: any = null;
-      const fields: Record<string, string> = {};
-
-      // Extract file and fields from multipart request
-      for await (const part of parts) {
-        if (part.type === 'file') {
-          file = await documentService.saveFile(part);
-        } else if (part.type === 'field') {
-          fields[part.fieldname] = String(part.value);
-        }
-      }
-
-      if (!file || !fields.filename || !fields.mimetype) {
-        return reply.status(400).send({ error: 'Missing file or required fields' });
-      }
-
-      const userId = (req.user as any)?.userId;
-      if (!userId) {
-        return reply.status(401).send({ error: 'Unauthorized: No userId found' });
-      }
-
-      // Process file upload with business logic
-      const uploadResult = await documentService.processFileUpload({
-        file,
-        fields: {
-          filename: fields.filename,
-          mimetype: fields.mimetype,
-          tags: fields.tags,
-          description: fields.description,
-        },
-        userId,
+    const result = await documentService.handleFileUpload(req);
+    
+    if (result.isOk()) {
+      return reply.status(201).send({
+        message: 'Document uploaded successfully',
+        document: result.unwrap(),
       });
-
-      if (uploadResult.isErr()) {
-        return reply.status(400).send({ error: uploadResult.unwrapErr().message });
-      }
-
-      // Save document to database
-      const documentResult = await documentService.uploadDocument(uploadResult.unwrap());
-      
-      if (documentResult.isOk()) {
-        return reply.status(201).send({
-          message: 'Document uploaded successfully',
-          document: documentResult.unwrap(),
-        });
-      } else {
-        return reply.status(500).send({ error: documentResult.unwrapErr().message });
-      }
-    } catch (error) {
-      return reply.status(500).send({ error: 'Upload failed' });
+    } else {
+      return reply.status(400).send({ error: result.unwrapErr().message });
     }
   },
 
@@ -199,6 +156,7 @@ export const DocumentController = {
 
   async downloadDocument(req: FastifyRequest, reply: FastifyReply) {
     const { token } = req.params as { token: string };
+    
     let payload: any;
     try {
       payload = await reply.server.jwt.verify(token);

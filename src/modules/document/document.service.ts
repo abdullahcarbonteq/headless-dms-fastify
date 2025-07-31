@@ -5,11 +5,12 @@ import { InsertDocumentDTO, uploadSchema } from './document.dto.js';
 import { IDocumentService, Document } from './document.service.interface.js';
 import { Result } from '@carbonteq/fp';
 import { PaginationOptions, PaginatedResult } from './document.repository.interface.js';
-import { config } from '../../config/index.js';
+import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
 import { MultipartFile } from '@fastify/multipart';
+import { FastifyRequest } from 'fastify';
 
 @injectable()
 export class DocumentService implements IDocumentService {
@@ -17,7 +18,8 @@ export class DocumentService implements IDocumentService {
 
   constructor(
     @inject('IDocumentRepository') private documentRepository: IDocumentRepository,
-    @inject('ILogger') logger: ILogger
+    @inject('ILogger') logger: ILogger,
+    @inject('IConfigurationService') private config: IConfigurationService
   ) {
     this.logger = logger.child({ module: 'DocumentService' });
   }
@@ -151,10 +153,10 @@ export class DocumentService implements IDocumentService {
     this.logger.debug('Saving file to disk', { filename: file.filename });
     
     const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(file.filename)}`;
-    const uploadPath = path.join(config.app.upload.uploadDir, uniqueName);
+    const uploadPath = path.join(this.config.app.upload.uploadDir, uniqueName);
     
     // Ensure upload directory exists
-    await fs.promises.mkdir(config.app.upload.uploadDir, { recursive: true });
+    await fs.promises.mkdir(this.config.app.upload.uploadDir, { recursive: true });
     
     // Write file to disk
     const writeStream = fs.createWriteStream(uploadPath);
@@ -192,25 +194,25 @@ export class DocumentService implements IDocumentService {
     this.logger.info('Processing file upload', { filename: fileData.fields.filename });
     
     // Validate file size
-    if (fileData.file.size > config.app.upload.maxFileSize) {
+    if (fileData.file.size > this.config.app.upload.maxFileSize) {
       this.logger.warn('File too large', { 
         filename: fileData.fields.filename, 
         size: fileData.file.size, 
-        maxSize: config.app.upload.maxFileSize 
+        maxSize: this.config.app.upload.maxFileSize 
       });
       return Result.Err(new Error(
-        `File too large. Maximum size is ${config.app.upload.maxFileSize / (1024 * 1024)}MB`
+        `File too large. Maximum size is ${this.config.app.upload.maxFileSize / (1024 * 1024)}MB`
       ));
     }
 
     // Validate file type
-    if (!config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
+    if (!this.config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
       this.logger.warn('File type not allowed', { 
         filename: fileData.fields.filename, 
         mimetype: fileData.file.mimetype 
       });
       return Result.Err(new Error(
-        `File type not allowed. Allowed types: ${config.app.upload.allowedMimeTypes.join(', ')}`
+        `File type not allowed. Allowed types: ${this.config.app.upload.allowedMimeTypes.join(', ')}`
       ));
     }
 
@@ -257,5 +259,66 @@ export class DocumentService implements IDocumentService {
 
     this.logger.info('File upload processed successfully', { filename: fileData.fields.filename });
     return Result.Ok(validation.data);
+  }
+
+  /**
+   * Complete file upload handler - processes multipart request and saves document
+   * @param req - Fastify request with multipart data
+   * @returns Promise<Result<Document, Error>> - Created document or error
+   */
+  async handleFileUpload(req: FastifyRequest): Promise<Result<Document, Error>> {
+    this.logger.info('Starting file upload process');
+    
+    const parts = req.parts();
+    let file: any = null;
+    const fields: Record<string, string> = {};
+
+    // Extract file and fields from multipart request
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        file = await this.saveFile(part);
+      } else if (part.type === 'field') {
+        fields[part.fieldname] = String(part.value);
+      }
+    }
+
+    if (!file || !fields.filename || !fields.mimetype) {
+      this.logger.warn('Missing file or required fields', { fields: Object.keys(fields) });
+      return Result.Err(new Error('Missing file or required fields'));
+    }
+
+    const userId = (req.user as any)?.userId;
+    if (!userId) {
+      this.logger.warn('No userId found in request');
+      return Result.Err(new Error('Unauthorized: No userId found'));
+    }
+
+    // Process file upload with business logic
+    const uploadResult = await this.processFileUpload({
+      file,
+      fields: {
+        filename: fields.filename,
+        mimetype: fields.mimetype,
+        tags: fields.tags,
+        description: fields.description,
+      },
+      userId,
+    });
+
+    if (uploadResult.isErr()) {
+      return uploadResult;
+    }
+
+    // Save document to database
+    const documentResult = await this.uploadDocument(uploadResult.unwrap());
+    
+    if (documentResult.isOk()) {
+      this.logger.info('Document uploaded successfully', { 
+        documentId: documentResult.unwrap().id,
+        filename: documentResult.unwrap().filename 
+      });
+    }
+    
+    return documentResult;
   }
 }

@@ -91,4 +91,6 @@ export class UserService implements IUserService {
     this.logger.debug('User lookup completed', { email, found: !!user });
     return Result.Ok(user);
   }
+
+
 }
