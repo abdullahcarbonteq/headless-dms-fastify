@@ -1,7 +1,7 @@
-import { InsertDocumentDTO } from '../document.dto.js';
-import { documents } from '../document.schema.js';
+import { InsertDocumentDTO } from './document.dto.js';
+import { documents } from './document.schema.js';
 import { Result } from '@carbonteq/fp';
-import { PaginationOptions, PaginatedResult } from '../interfaces/IDocumentRepository.js';
+import { PaginationOptions, PaginatedResult } from './document.repository.interface.js';
 
 // Document type based on the schema
 export type Document = typeof documents.$inferSelect;

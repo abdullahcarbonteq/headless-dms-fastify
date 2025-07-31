@@ -1,6 +1,6 @@
-import { db } from '../../../config/db.js';
-import { users } from '../user.schema.js';
-import { IUserRepository, User, CreateUserData } from '../interfaces/IUserRepository.js';
+import { db } from '../../config/db.js';
+import { users } from './user.schema.js';
+import { IUserRepository, User, CreateUserData } from './user.repository.interface.js';
 import { Result } from '@carbonteq/fp';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';

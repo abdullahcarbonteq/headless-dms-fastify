@@ -1,7 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { DocumentService } from './services/document.service.js';
-import { FileUploadService } from './services/fileUpload.service.js';
-import { FileHandlerService } from './services/fileHandler.service.js';
+import { DocumentService } from './document.service.js';
 import { Result } from '@carbonteq/fp';
 import { container } from '../../config/container.js';
 import { paginationQuerySchema, type PaginationQuery } from '../../shared/dto/pagination.dto.js';
@@ -19,7 +17,7 @@ export const DocumentController = {
       // Extract file and fields from multipart request
       for await (const part of parts) {
         if (part.type === 'file') {
-          file = await FileHandlerService.saveFile(part);
+          file = await documentService.saveFile(part);
         } else if (part.type === 'field') {
           fields[part.fieldname] = String(part.value);
         }
@@ -35,7 +33,7 @@ export const DocumentController = {
       }
 
       // Process file upload with business logic
-      const uploadResult = await FileUploadService.processFileUpload({
+      const uploadResult = await documentService.processFileUpload({
         file,
         fields: {
           filename: fields.filename,

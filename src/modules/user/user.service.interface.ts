@@ -1,6 +1,6 @@
-import { RegisterDTO } from '../dto/register.dto.js';
-import { LoginDTO } from '../dto/login.dto.js';
-import { users } from '../user.schema.js';
+import { RegisterDTO } from './user.register.dto.js';
+import { LoginDTO } from './user.login.dto.js';
+import { users } from './user.schema.js';
 import { Result } from '@carbonteq/fp';
 
 // User type based on the schema

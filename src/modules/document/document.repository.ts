@@ -1,6 +1,6 @@
-import { db } from '../../../config/db.js';
-import { documents } from '../document.schema.js';
-import { IDocumentRepository, Document, DocumentSearchCriteria, PaginationOptions, PaginatedResult } from '../interfaces/IDocumentRepository.js';
+import { db } from '../../config/db.js';
+import { documents } from './document.schema.js';
+import { IDocumentRepository, Document, DocumentSearchCriteria, PaginationOptions, PaginatedResult } from './document.repository.interface.js';
 import { Result } from '@carbonteq/fp';
 import { eq, like, ilike, and, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';

@@ -1,5 +1,5 @@
-import { InsertDocumentDTO } from '../document.dto.js';
-import { documents } from '../document.schema.js';
+import { InsertDocumentDTO } from './document.dto.js';
+import { documents } from './document.schema.js';
 import { Result } from '@carbonteq/fp';
 
 // Document type based on the schema

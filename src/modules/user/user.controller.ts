@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { registerSchema } from './dto/register.dto.js';
-import { loginSchema } from './dto/login.dto.js';
+import { registerSchema } from './user.register.dto.js';
+import { loginSchema } from './user.login.dto.js';
 import { UserService } from './user.service.js';
 import { Result } from '@carbonteq/fp';
 import { container } from '../../config/container.js';

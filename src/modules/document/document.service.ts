@@ -1,0 +1,261 @@
+import { inject, injectable } from 'tsyringe';
+import { IDocumentRepository } from './document.repository.interface.js';
+import { ILogger } from '../../shared/interfaces/ILogger.js';
+import { InsertDocumentDTO, uploadSchema } from './document.dto.js';
+import { IDocumentService, Document } from './document.service.interface.js';
+import { Result } from '@carbonteq/fp';
+import { PaginationOptions, PaginatedResult } from './document.repository.interface.js';
+import { config } from '../../config/index.js';
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import fs from 'fs';
+import { MultipartFile } from '@fastify/multipart';
+
+@injectable()
+export class DocumentService implements IDocumentService {
+  private logger: ILogger;
+
+  constructor(
+    @inject('IDocumentRepository') private documentRepository: IDocumentRepository,
+    @inject('ILogger') logger: ILogger
+  ) {
+    this.logger = logger.child({ module: 'DocumentService' });
+  }
+
+  async uploadDocument(data: InsertDocumentDTO): Promise<Result<Document, Error>> {
+    this.logger.info('Starting document upload', { 
+      filename: data.filename, 
+      mimetype: data.mimetype, 
+      userId: data.userId 
+    });
+    
+    this.logger.debug('Creating document in repository');
+    const createResult = await this.documentRepository.createDocument(data);
+    
+    if (createResult.isErr()) {
+      this.logger.error('Failed to create document', createResult.unwrapErr(), { 
+        filename: data.filename, 
+        userId: data.userId 
+      });
+      return Result.Err(new Error('Failed to create document'));
+    }
+    
+    const document = createResult.unwrap();
+    this.logger.info('Document uploaded successfully', { 
+      documentId: document.id, 
+      filename: document.filename 
+    });
+    return Result.Ok(document);
+  }
+
+  async getAllDocuments(pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>> {
+    this.logger.info('Retrieving documents', { pagination });
+    
+    this.logger.debug('Fetching documents from repository');
+    const documentsResult = await this.documentRepository.getAllDocuments(pagination);
+    
+    if (documentsResult.isErr()) {
+      this.logger.error('Failed to get documents', documentsResult.unwrapErr());
+      return Result.Err(new Error('Failed to get documents'));
+    }
+    
+    const result = documentsResult.unwrap();
+    if (Array.isArray(result)) {
+      this.logger.info('Retrieved all documents successfully', { count: result.length });
+    } else {
+      this.logger.info('Retrieved paginated documents successfully', { 
+        count: result.data.length,
+        page: result.page,
+        totalPages: result.totalPages,
+        total: result.total
+      });
+    }
+    return Result.Ok(result);
+  }
+
+  async deleteDocument(id: string): Promise<Result<boolean, Error>> {
+    this.logger.info('Starting document deletion', { documentId: id });
+    
+    this.logger.debug('Deleting document from repository');
+    const deleteResult = await this.documentRepository.deleteDocument(id);
+    
+    if (deleteResult.isErr()) {
+      this.logger.error('Failed to delete document', deleteResult.unwrapErr(), { documentId: id });
+      return Result.Err(new Error('Failed to delete document'));
+    }
+    
+    const deleted = deleteResult.unwrap();
+    if (deleted) {
+      this.logger.info('Document deleted successfully', { documentId: id });
+    } else {
+      this.logger.warn('Document not found for deletion', { documentId: id });
+    }
+    return Result.Ok(deleted);
+  }
+
+  async searchDocuments(criteria: { tags?: string[]; description?: string }, pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>> {
+    this.logger.info('Starting document search', { criteria, pagination });
+    
+    this.logger.debug('Searching documents in repository');
+    const searchResult = await this.documentRepository.searchDocuments(criteria, pagination);
+    
+    if (searchResult.isErr()) {
+      this.logger.error('Failed to search documents', searchResult.unwrapErr(), { criteria });
+      return Result.Err(new Error('Failed to search documents'));
+    }
+    
+    const result = searchResult.unwrap();
+    if (Array.isArray(result)) {
+      this.logger.info('Document search completed successfully', { 
+        criteria, 
+        count: result.length 
+      });
+    } else {
+      this.logger.info('Document search completed successfully', { 
+        criteria,
+        count: result.data.length,
+        page: result.page,
+        totalPages: result.totalPages,
+        total: result.total
+      });
+    }
+    return Result.Ok(result);
+  }
+
+  async getDocumentById(id: string): Promise<Result<Document | null, Error>> {
+    this.logger.debug('Getting document by ID', { documentId: id });
+    
+    const documentResult = await this.documentRepository.findById(id);
+    
+    if (documentResult.isErr()) {
+      this.logger.error('Failed to get document by ID', documentResult.unwrapErr(), { documentId: id });
+      return Result.Err(new Error('Failed to get document'));
+    }
+    
+    const document = documentResult.unwrap();
+    this.logger.debug('Document lookup completed', { 
+      documentId: id, 
+      found: !!document 
+    });
+    return Result.Ok(document);
+  }
+
+  // File handling methods (merged from FileHandlerService and FileUploadService)
+  
+  /**
+   * Save uploaded file to disk
+   * @param file - Multipart file from request
+   * @returns Promise<FileInfo> - File information
+   */
+  async saveFile(file: MultipartFile): Promise<{ path: string; filename: string; mimetype: string; size: number }> {
+    this.logger.debug('Saving file to disk', { filename: file.filename });
+    
+    const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(file.filename)}`;
+    const uploadPath = path.join(config.app.upload.uploadDir, uniqueName);
+    
+    // Ensure upload directory exists
+    await fs.promises.mkdir(config.app.upload.uploadDir, { recursive: true });
+    
+    // Write file to disk
+    const writeStream = fs.createWriteStream(uploadPath);
+    file.file.pipe(writeStream);
+    
+    await new Promise<void>((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+      file.file.on('error', reject);
+    });
+    
+    // Get file size
+    const stats = fs.statSync(uploadPath);
+    
+    this.logger.debug('File saved successfully', { path: uploadPath, size: stats.size });
+    
+    return {
+      path: uploadPath,
+      filename: file.filename,
+      mimetype: file.mimetype,
+      size: stats.size,
+    };
+  }
+
+  /**
+   * Process file upload with validation and transformation
+   * @param fileData - File upload data
+   * @returns Promise<Result<InsertDocumentDTO, Error>> - Processed document data
+   */
+    async processFileUpload(fileData: { 
+    file: { path: string; size: number; mimetype: string }; 
+    fields: { filename: string; mimetype: string; tags?: string; description?: string }; 
+    userId: string 
+  }): Promise<Result<InsertDocumentDTO, Error>> {
+    this.logger.info('Processing file upload', { filename: fileData.fields.filename });
+    
+    // Validate file size
+    if (fileData.file.size > config.app.upload.maxFileSize) {
+      this.logger.warn('File too large', { 
+        filename: fileData.fields.filename, 
+        size: fileData.file.size, 
+        maxSize: config.app.upload.maxFileSize 
+      });
+      return Result.Err(new Error(
+        `File too large. Maximum size is ${config.app.upload.maxFileSize / (1024 * 1024)}MB`
+      ));
+    }
+
+    // Validate file type
+    if (!config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
+      this.logger.warn('File type not allowed', { 
+        filename: fileData.fields.filename, 
+        mimetype: fileData.file.mimetype 
+      });
+      return Result.Err(new Error(
+        `File type not allowed. Allowed types: ${config.app.upload.allowedMimeTypes.join(', ')}`
+      ));
+    }
+
+    // Parse tags
+    let tagsString = '[]';
+    if (fileData.fields.tags) {
+      try {
+        if (typeof fileData.fields.tags === 'string') {
+          const parsed = JSON.parse(fileData.fields.tags);
+          if (Array.isArray(parsed)) {
+            tagsString = JSON.stringify(parsed.map(String));
+          } else if (typeof parsed === 'string') {
+            tagsString = JSON.stringify([parsed]);
+          } else {
+            tagsString = '[]';
+          }
+        } else {
+          tagsString = JSON.stringify(fileData.fields.tags);
+        }
+      } catch {
+        tagsString = JSON.stringify(fileData.fields.tags.split(',').map((t: string) => t.trim()));
+      }
+    }
+
+    const description = fileData.fields.description || undefined;
+
+    // Validate with Zod schema
+    const validation = uploadSchema.safeParse({
+      filename: fileData.fields.filename,
+      mimetype: fileData.fields.mimetype,
+      path: fileData.file.path,
+      tags: tagsString,
+      description,
+      userId: fileData.userId,
+    });
+
+    if (!validation.success) {
+      this.logger.warn('File validation failed', { 
+        filename: fileData.fields.filename, 
+        errors: validation.error.message 
+      });
+      return Result.Err(new Error(`Validation failed: ${validation.error.message}`));
+    }
+
+    this.logger.info('File upload processed successfully', { filename: fileData.fields.filename });
+    return Result.Ok(validation.data);
+  }
+}

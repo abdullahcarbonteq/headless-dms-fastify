@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { DocumentController } from './document.controller.js';
-import { requireAdmin } from '../../utils/middlewares/auth.js';
+import { requireAdmin } from '../../middlewares/auth.js';
 import { verifyJWT } from '../../middlewares/auth.js';
 
 export default async function documentRoutes(app: FastifyInstance) {
