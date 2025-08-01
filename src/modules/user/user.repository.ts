@@ -1,6 +1,8 @@
 import { db } from '../../config/db.js';
 import { users } from './user.schema.js';
-import { IUserRepository, User, CreateUserData } from './user.repository.interface.js';
+import { IUserRepository, CreateUserData } from './user.repository.interface.js';
+import { User } from '../../entities/user/User.js';
+import { UserFactory } from '../../entities/user/UserFactory.js';
 import { Result } from '@carbonteq/fp';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 export class DrizzleUserRepository implements IUserRepository {
   async createUser(data: CreateUserData): Promise<Result<User, Error>> {
     try {
-      const [user] = await db.insert(users).values({
+      const [userRow] = await db.insert(users).values({
         id: uuidv4(),
         name: data.name,
         email: data.email,
@@ -16,7 +18,13 @@ export class DrizzleUserRepository implements IUserRepository {
         role: data.role,
       }).returning();
       
-      return Result.Ok(user);
+      // Convert database row to User entity using factory
+      const userResult = UserFactory.fromDatabaseRow(userRow);
+      if (userResult.isErr()) {
+        return Result.Err(userResult.unwrapErr());
+      }
+      
+      return Result.Ok(userResult.unwrap());
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to create user'));
     }
@@ -24,19 +32,39 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async findByEmail(email: string): Promise<Result<User | null, Error>> {
     try {
-      const [user] = await db.select().from(users).where(eq(users.email, email));
-      return Result.Ok(user || null);
+      const [userRow] = await db.select().from(users).where(eq(users.email, email));
+      
+      if (!userRow) {
+        return Result.Ok(null);
+      }
+      
+      // Convert database row to User entity using factory
+      const userResult = UserFactory.fromDatabaseRow(userRow);
+      if (userResult.isErr()) {
+        return Result.Err(userResult.unwrapErr());
+      }
+      
+      return Result.Ok(userResult.unwrap());
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to find user by email'));
     }
   }
 
-  // TODO: Implement in cleanup phase when user management endpoints are added
-  /*
   async findById(id: string): Promise<Result<User | null, Error>> {
     try {
-      const [user] = await db.select().from(users).where(eq(users.id, id));
-      return Result.Ok(user || null);
+      const [userRow] = await db.select().from(users).where(eq(users.id, id));
+      
+      if (!userRow) {
+        return Result.Ok(null);
+      }
+      
+      // Convert database row to User entity using factory
+      const userResult = UserFactory.fromDatabaseRow(userRow);
+      if (userResult.isErr()) {
+        return Result.Err(userResult.unwrapErr());
+      }
+      
+      return Result.Ok(userResult.unwrap());
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to find user by ID'));
     }
@@ -50,16 +78,22 @@ export class DrizzleUserRepository implements IUserRepository {
       if (data.passwordHash) updateData.password_hash = data.passwordHash;
       if (data.role) updateData.role = data.role;
 
-      const [user] = await db.update(users)
+      const [userRow] = await db.update(users)
         .set(updateData)
         .where(eq(users.id, id))
         .returning();
 
-      if (!user) {
+      if (!userRow) {
         return Result.Err(new Error('User not found'));
       }
 
-      return Result.Ok(user);
+      // Convert database row to User entity using factory
+      const userResult = UserFactory.fromDatabaseRow(userRow);
+      if (userResult.isErr()) {
+        return Result.Err(userResult.unwrapErr());
+      }
+
+      return Result.Ok(userResult.unwrap());
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to update user'));
     }
@@ -77,11 +111,21 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async getAllUsers(): Promise<Result<User[], Error>> {
     try {
-      const allUsers = await db.select().from(users);
-      return Result.Ok(allUsers);
+      const userRows = await db.select().from(users);
+      
+      // Convert database rows to User entities using factory
+      const userEntities: User[] = [];
+      for (const userRow of userRows) {
+        const userResult = UserFactory.fromDatabaseRow(userRow);
+        if (userResult.isErr()) {
+          return Result.Err(userResult.unwrapErr());
+        }
+        userEntities.push(userResult.unwrap());
+      }
+      
+      return Result.Ok(userEntities);
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to get all users'));
     }
   }
-  */
 }; 

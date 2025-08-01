@@ -1,9 +1,9 @@
 import { InsertDocumentDTO } from './document.dto.js';
-import { documents } from './document.schema.js';
+import { Document } from '../../entities/document/Document.js';
 import { Result } from '@carbonteq/fp';
 
-// Document type based on the schema
-export type Document = typeof documents.$inferSelect;
+// Re-export Document for convenience
+export { Document } from '../../entities/document/Document.js';
 
 // Search criteria for document queries
 export interface DocumentSearchCriteria {

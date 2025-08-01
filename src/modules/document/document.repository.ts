@@ -3,13 +3,13 @@ import { documents } from './document.schema.js';
 import { IDocumentRepository, Document, DocumentSearchCriteria, PaginationOptions, PaginatedResult } from './document.repository.interface.js';
 import { Result } from '@carbonteq/fp';
 import { eq, like, ilike, and, or } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
+import { DocumentFactory } from '../../entities/document/DocumentFactory.js';
 
 export class DrizzleDocumentRepository implements IDocumentRepository {
   async createDocument(data: any): Promise<Result<Document, Error>> {
     try {
       const [doc] = await db.insert(documents).values({
-        id: uuidv4(),
+        id: data.id || crypto.randomUUID(),
         filename: data.filename,
         mimetype: data.mimetype,
         path: data.path,
@@ -18,7 +18,13 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         userId: data.userId,
       }).returning();
       
-      return Result.Ok(doc);
+      // Convert database row to Document entity
+      const documentResult = DocumentFactory.fromDatabaseRow(doc);
+      if (documentResult.isErr()) {
+        return Result.Err(documentResult.unwrapErr());
+      }
+      
+      return Result.Ok(documentResult.unwrap());
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to create document'));
     }
@@ -27,7 +33,17 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
   async findById(id: string): Promise<Result<Document | null, Error>> {
     try {
       const [doc] = await db.select().from(documents).where(eq(documents.id, id));
-      return Result.Ok(doc || null);
+      if (!doc) {
+        return Result.Ok(null);
+      }
+      
+      // Convert database row to Document entity
+      const documentResult = DocumentFactory.fromDatabaseRow(doc);
+      if (documentResult.isErr()) {
+        return Result.Err(documentResult.unwrapErr());
+      }
+      
+      return Result.Ok(documentResult.unwrap());
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to find document by ID'));
     }
@@ -48,8 +64,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
           .limit(pagination.limit)
           .offset(offset);
         
+        // Convert database rows to Document entities
+        const documentEntitiesResult = DocumentFactory.fromDatabaseRows(docs);
+        if (documentEntitiesResult.isErr()) {
+          return Result.Err(documentEntitiesResult.unwrapErr());
+        }
+        
         const paginatedResult: PaginatedResult<Document> = {
-          data: docs,
+          data: documentEntitiesResult.unwrap(),
           total,
           page: pagination.page,
           limit: pagination.limit,
@@ -59,7 +81,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         return Result.Ok(paginatedResult);
       } else {
         const docs = await db.select().from(documents);
-        return Result.Ok(docs);
+        
+        // Convert database rows to Document entities
+        const documentEntitiesResult = DocumentFactory.fromDatabaseRows(docs);
+        if (documentEntitiesResult.isErr()) {
+          return Result.Err(documentEntitiesResult.unwrapErr());
+        }
+        
+        return Result.Ok(documentEntitiesResult.unwrap());
       }
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to get all documents'));
@@ -139,8 +168,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
           ? await query.where(whereClause).limit(pagination.limit).offset(offset)
           : await query.limit(pagination.limit).offset(offset);
         
+        // Convert database rows to Document entities
+        const documentEntitiesResult = DocumentFactory.fromDatabaseRows(docs);
+        if (documentEntitiesResult.isErr()) {
+          return Result.Err(documentEntitiesResult.unwrapErr());
+        }
+        
         const paginatedResult: PaginatedResult<Document> = {
-          data: docs,
+          data: documentEntitiesResult.unwrap(),
           total,
           page: pagination.page,
           limit: pagination.limit,
@@ -152,7 +187,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         const docs = whereClause 
           ? await db.select().from(documents).where(whereClause)
           : await db.select().from(documents);
-        return Result.Ok(docs);
+        
+        // Convert database rows to Document entities
+        const documentEntitiesResult = DocumentFactory.fromDatabaseRows(docs);
+        if (documentEntitiesResult.isErr()) {
+          return Result.Err(documentEntitiesResult.unwrapErr());
+        }
+        
+        return Result.Ok(documentEntitiesResult.unwrap());
       }
     } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Failed to search documents'));

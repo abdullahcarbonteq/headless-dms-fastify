@@ -1,10 +1,7 @@
 import { RegisterDTO } from './user.register.dto.js';
 import { LoginDTO } from './user.login.dto.js';
-import { users } from './user.schema.js';
+import { User } from '../../entities/user/User.js';
 import { Result } from '@carbonteq/fp';
-
-// User type based on the schema
-export type User = typeof users.$inferSelect;
 
 export interface IUserService {
   /**
@@ -27,4 +24,32 @@ export interface IUserService {
    * @returns Promise<Result<User | null, Error>> - Success with user or null, or error
    */
   findByEmail(email: string): Promise<Result<User | null, Error>>;
+
+  /**
+   * Find user by ID
+   * @param id - User ID
+   * @returns Promise<Result<User | null, Error>> - Success with user or null, or error
+   */
+  findById(id: string): Promise<Result<User | null, Error>>;
+
+  /**
+   * Get all users
+   * @returns Promise<Result<User[], Error>> - Success with all users or error
+   */
+  getAllUsers(): Promise<Result<User[], Error>>;
+
+  /**
+   * Update user information
+   * @param id - User ID
+   * @param data - User data to update
+   * @returns Promise<Result<User, Error>> - Success with updated user or error
+   */
+  updateUser(id: string, data: { name?: string; email?: string; password?: string; role?: string }): Promise<Result<User, Error>>;
+
+  /**
+   * Delete user by ID
+   * @param id - User ID
+   * @returns Promise<Result<boolean, Error>> - Success with deletion status or error
+   */
+  deleteUser(id: string): Promise<Result<boolean, Error>>;
 } 
