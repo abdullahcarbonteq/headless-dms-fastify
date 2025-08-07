@@ -205,15 +205,17 @@ export class DocumentService implements IDocumentService {
       ));
     }
 
-    // Validate file type
-    if (!this.config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
-      this.logger.warn('File type not allowed', { 
-        filename: fileData.fields.filename, 
-        mimetype: fileData.file.mimetype 
-      });
-      return Result.Err(new Error(
-        `File type not allowed. Allowed types: ${this.config.app.upload.allowedMimeTypes.join(', ')}`
-      ));
+    // Validate file type (if allowedMimeTypes is configured)
+    if (this.config.app.upload.allowedMimeTypes && this.config.app.upload.allowedMimeTypes.length > 0) {
+      if (!this.config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
+        this.logger.warn('File type not allowed', { 
+          filename: fileData.fields.filename, 
+          mimetype: fileData.file.mimetype 
+        });
+        return Result.Err(new Error(
+          `File type not allowed. Allowed types: ${this.config.app.upload.allowedMimeTypes.join(', ')}`
+        ));
+      }
     }
 
     // Parse tags

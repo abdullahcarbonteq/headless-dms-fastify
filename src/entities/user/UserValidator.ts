@@ -1,12 +1,14 @@
 import { User } from './User.js';
 
 /**
- * User validator - handles all business rule validation
- * Separates input validation from business validation
+ * User validator - handles BUSINESS RULE validation only
+ * Input validation is handled by DTOs (Zod schemas)
+ * Business rules are domain-specific logic that can be tested independently
  */
 export class UserValidator {
   /**
-   * Validate user name (business rule)
+   * BUSINESS RULE: Validate user name format and content
+   * This is business logic, not input validation
    */
   validateName(name: string): boolean {
     if (!name || name.trim().length === 0) {
@@ -21,20 +23,21 @@ export class UserValidator {
       return false;
     }
     
-    // Check for valid characters (letters, spaces, hyphens, apostrophes)
+    // BUSINESS RULE: Names can only contain letters, spaces, hyphens, apostrophes
     const nameRegex = /^[a-zA-Z\s\-']+$/;
     return nameRegex.test(name.trim());
   }
 
   /**
-   * Validate email format (business rule)
+   * BUSINESS RULE: Validate email format and domain
+   * This is business logic, not input validation
    */
   validateEmail(email: string): boolean {
     if (!email || email.trim().length === 0) {
       return false;
     }
     
-    // Basic email format validation
+    // BUSINESS RULE: Email must follow standard format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email.trim());
   }
@@ -116,21 +119,21 @@ export class UserValidator {
     return true;
   }
 
+
+
   /**
-   * Check if user can be deleted (business rule)
+   * BUSINESS RULE: Check if user can perform admin actions
    */
-  canDeleteUser(user: User): boolean {
-    // Business rule: Cannot delete the last admin user
-    // This would need to be checked against the repository in practice
-    return true;
+  canPerformAdminAction(user: User): boolean {
+    // BUSINESS RULE: Only admin users can perform admin actions
+    return user.isAdmin();
   }
 
   /**
-   * Check if user can change role (business rule)
+   * BUSINESS RULE: Check if user can access sensitive data
    */
-  canChangeRole(user: User, newRole: 'user' | 'admin'): boolean {
-    // Business rule: Cannot demote the last admin
-    // This would need to be checked against the repository in practice
-    return true;
+  canAccessSensitiveData(user: User, targetUserId: string): boolean {
+    // BUSINESS RULE: Users can only access their own data, unless they're admin
+    return user.id === targetUserId || user.isAdmin();
   }
 } 

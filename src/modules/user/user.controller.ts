@@ -5,9 +5,11 @@ import { updateUserSchema, getUserByIdSchema } from './user.update.dto.js';
 import { UserService } from './user.service.js';
 import { Result } from '@carbonteq/fp';
 import { container } from '../../config/container.js';
+import { IAuthService } from '../../shared/interfaces/IAuthService.js';
 
-// Get service instance from DI container
+// Get service instances from DI container
 const userService = container.resolve(UserService);
+const authService = container.resolve<IAuthService>('IAuthService');
 
 export const UserController = {
   async register(req: FastifyRequest, reply: FastifyReply) {
@@ -34,13 +36,15 @@ export const UserController = {
     const result = await userService.login(parsed.data);
     
     if (result.isOk()) {
-      // Generate JWT
-      const token = await reply.server.jwt.sign({
-        userId: result.unwrap().id,
-        role: result.unwrap().role,
-        email: result.unwrap().email
-      });
-      // Return token (and optionally user info)
+      const user = result.unwrap();
+      
+      // Generate JWT using injected auth service
+      const tokenResult = await authService.generateToken(user);
+      if (tokenResult.isErr()) {
+        return reply.status(500).send({ error: 'Failed to generate authentication token' });
+      }
+      
+      const token = tokenResult.unwrap();
       return reply.send({ message: 'Login successful', token });
     } else {
       return reply.status(400).send({ error: result.unwrapErr().message });
@@ -113,7 +117,13 @@ export const UserController = {
       return reply.status(400).send({ error: 'Invalid user ID format' });
     }
     
-    const result = await userService.deleteUser(parsed.data.id);
+    // Get requesting user ID from JWT token
+    const requestingUserId = (req.user as any)?.userId;
+    if (!requestingUserId) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const result = await userService.deleteUser(parsed.data.id, requestingUserId);
     
     if (result.isOk()) {
       const deleted = result.unwrap();

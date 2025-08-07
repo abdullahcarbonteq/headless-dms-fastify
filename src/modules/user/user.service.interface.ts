@@ -48,8 +48,9 @@ export interface IUserService {
 
   /**
    * Delete user by ID
-   * @param id - User ID
+   * @param id - User ID to delete
+   * @param requestingUserId - ID of the user making the request (for authorization)
    * @returns Promise<Result<boolean, Error>> - Success with deletion status or error
    */
-  deleteUser(id: string): Promise<Result<boolean, Error>>;
+  deleteUser(id: string, requestingUserId: string): Promise<Result<boolean, Error>>;
 } 

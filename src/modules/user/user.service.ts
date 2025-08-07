@@ -6,38 +6,60 @@ import { LoginDTO } from './user.login.dto.js';
 import { IUserService } from './user.service.interface.js';
 import { User } from '../../entities/user/User.js';
 import { Result } from '@carbonteq/fp';
-import bcrypt from 'bcrypt';
+import { IAuthService } from '../../shared/interfaces/IAuthService.js';
+import { UserValidator } from '../../entities/user/UserValidator.js';
+import { BusinessRuleService } from '../../shared/services/BusinessRuleService.js';
 
 @injectable()
 export class UserService implements IUserService {
   private logger: ILogger;
+  private userValidator: UserValidator;
 
   constructor(
     @inject('IUserRepository') private userRepository: IUserRepository,
-    @inject('ILogger') logger: ILogger
+    @inject('ILogger') logger: ILogger,
+    @inject('IAuthService') private authService: IAuthService,
+    @inject('BusinessRuleService') private businessRuleService: BusinessRuleService
   ) {
     this.logger = logger.child({ module: 'UserService' });
+    this.userValidator = new UserValidator();
   }
 
   async register(data: RegisterDTO): Promise<Result<User, Error>> {
     this.logger.info('Starting user registration', { email: data.email, role: data.role });
     
-    // Check if user already exists
-    this.logger.debug('Checking if user already exists', { email: data.email });
-    const existingResult = await this.userRepository.findByEmail(data.email);
-    if (existingResult.isErr()) {
-      this.logger.error('Failed to check existing user', existingResult.unwrapErr(), { email: data.email });
-      return Result.Err(new Error('Failed to check existing user'));
+    // BUSINESS RULE: Validate user data using business rules
+    if (!this.userValidator.validateName(data.name)) {
+      this.logger.warn('User registration failed - invalid name format', { email: data.email, name: data.name });
+      return Result.Err(new Error('Invalid name format'));
     }
     
-    if (existingResult.unwrap()) {
+    if (!this.userValidator.validateEmail(data.email)) {
+      this.logger.warn('User registration failed - invalid email format', { email: data.email });
+      return Result.Err(new Error('Invalid email format'));
+    }
+    
+    // BUSINESS RULE: Check if user can register with this email (uniqueness)
+    this.logger.debug('Checking if user can register with this email', { email: data.email });
+    const emailAvailableResult = await this.businessRuleService.isEmailAvailableForRegistration(data.email);
+    if (emailAvailableResult.isErr()) {
+      this.logger.error('Failed to check email availability', emailAvailableResult.unwrapErr(), { email: data.email });
+      return Result.Err(new Error('Failed to check email availability'));
+    }
+    
+    if (!emailAvailableResult.unwrap()) {
       this.logger.warn('User registration attempted with existing email', { email: data.email });
       return Result.Err(new Error('User already exists'));
     }
 
     // Hash password
     this.logger.debug('Hashing password');
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    const hashResult = await this.authService.hashPassword(data.password);
+    if (hashResult.isErr()) {
+      this.logger.error('Failed to hash password', hashResult.unwrapErr(), { email: data.email });
+      return Result.Err(new Error('Failed to hash password'));
+    }
+    const passwordHash = hashResult.unwrap();
 
     // Create user
     this.logger.debug('Creating new user');
@@ -69,7 +91,13 @@ export class UserService implements IUserService {
     }
 
     this.logger.debug('Verifying password');
-    const valid = await bcrypt.compare(data.password, user.passwordHash);
+    const compareResult = await this.authService.comparePassword(data.password, user.passwordHash);
+    if (compareResult.isErr()) {
+      this.logger.error('Failed to compare passwords', compareResult.unwrapErr(), { email: data.email });
+      return Result.Err(new Error('Failed to verify password'));
+    }
+    
+    const valid = compareResult.unwrap();
     if (!valid) {
       this.logger.warn('Login attempted with incorrect password', { email: data.email });
       return Result.Err(new Error('The Password you entered is incorrect'));
@@ -131,21 +159,32 @@ export class UserService implements IUserService {
       return Result.Err(new Error('Failed to check existing user'));
     }
     
-    if (!existingResult.unwrap()) {
+    const existingUser = existingResult.unwrap();
+    if (!existingUser) {
       this.logger.warn('Update attempted on non-existent user', { id });
       return Result.Err(new Error('User not found'));
     }
 
-    // Check if email is being updated and if it's already taken
+    // BUSINESS RULE: Validate update data using business rules
+    if (data.name && !this.userValidator.validateName(data.name)) {
+      this.logger.warn('User update failed - invalid name format', { id, name: data.name });
+      return Result.Err(new Error('Invalid name format'));
+    }
+    
+    if (data.email && !this.userValidator.validateEmail(data.email)) {
+      this.logger.warn('User update failed - invalid email format', { id, email: data.email });
+      return Result.Err(new Error('Invalid email format'));
+    }
+
+    // BUSINESS RULE: Check if email is being updated and if it's already taken
     if (data.email) {
-      const emailCheckResult = await this.userRepository.findByEmail(data.email);
-      if (emailCheckResult.isErr()) {
-        this.logger.error('Failed to check email availability', emailCheckResult.unwrapErr(), { email: data.email });
+      const emailAvailableResult = await this.businessRuleService.isEmailAvailableForUpdate(id, data.email);
+      if (emailAvailableResult.isErr()) {
+        this.logger.error('Failed to check email availability for update', emailAvailableResult.unwrapErr(), { id, email: data.email });
         return Result.Err(new Error('Failed to check email availability'));
       }
       
-      const existingUser = emailCheckResult.unwrap();
-      if (existingUser && existingUser.id !== id) {
+      if (!emailAvailableResult.unwrap()) {
         this.logger.warn('Update attempted with existing email', { id, email: data.email });
         return Result.Err(new Error('Email already taken'));
       }
@@ -157,7 +196,12 @@ export class UserService implements IUserService {
     if (data.email) updateData.email = data.email;
     if (data.role) updateData.role = data.role;
     if (data.password) {
-      updateData.passwordHash = await bcrypt.hash(data.password, 10);
+      const hashResult = await this.authService.hashPassword(data.password);
+      if (hashResult.isErr()) {
+        this.logger.error('Failed to hash password for update', hashResult.unwrapErr(), { id });
+        return Result.Err(new Error('Failed to hash password'));
+      }
+      updateData.passwordHash = hashResult.unwrap();
     }
 
     // Update user
@@ -172,8 +216,8 @@ export class UserService implements IUserService {
     return Result.Ok(updatedUser);
   }
 
-  async deleteUser(id: string): Promise<Result<boolean, Error>> {
-    this.logger.info('Deleting user', { id });
+  async deleteUser(id: string, requestingUserId: string): Promise<Result<boolean, Error>> {
+    this.logger.info('Deleting user', { id, requestingUserId });
     
     // Check if user exists
     const existingResult = await this.userRepository.findById(id);
@@ -182,9 +226,22 @@ export class UserService implements IUserService {
       return Result.Err(new Error('Failed to check existing user'));
     }
     
-    if (!existingResult.unwrap()) {
+    const existingUser = existingResult.unwrap();
+    if (!existingUser) {
       this.logger.warn('Delete attempted on non-existent user', { id });
       return Result.Err(new Error('User not found'));
+    }
+
+    // BUSINESS RULE: Check if user can be deleted
+    const canDeleteResult = await this.businessRuleService.canDeleteUser(existingUser, requestingUserId);
+    if (canDeleteResult.isErr()) {
+      this.logger.error('Failed to check user deletion rules', canDeleteResult.unwrapErr(), { id });
+      return Result.Err(new Error('Failed to check user deletion rules'));
+    }
+
+    if (!canDeleteResult.unwrap()) {
+      this.logger.warn('User deletion blocked by business rules', { id, requestingUserId });
+      return Result.Err(new Error('Cannot delete this user due to business rules'));
     }
 
     // Delete user

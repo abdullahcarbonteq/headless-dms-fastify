@@ -1,0 +1,202 @@
+{
+  "name": "Document Management System",
+  "version": "1.0.0",
+  "description": "A headless document management system built with Fastify and TypeScript",
+  "author": "Your Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/dms"
+  },
+  "environments": {
+    "development": {
+      "description": "Development environment configuration",
+      "server": {
+        "port": 3000,
+        "host": "0.0.0.0"
+      },
+      "database": {
+        "url": "postgresql://localhost:5432/dms_dev"
+      },
+      "logging": {
+        "level": "debug",
+        "format": "json",
+        "enableConsole": true,
+        "enableFile": false
+      },
+      "upload": {
+        "maxFileSize": 10485760,
+        "maxFiles": 10,
+        "uploadDir": "./uploads"
+      }
+    },
+    "production": {
+      "description": "Production environment configuration",
+      "server": {
+        "port": 8080,
+        "host": "0.0.0.0"
+      },
+      "database": {
+        "url": "postgresql://localhost:5432/dms_prod"
+      },
+      "logging": {
+        "level": "info",
+        "format": "json",
+        "enableConsole": true,
+        "enableFile": true,
+        "filePath": "./logs/app.log"
+      },
+      "upload": {
+        "maxFileSize": 52428800,
+        "maxFiles": 50,
+        "uploadDir": "/var/uploads"
+      }
+    },
+    "test": {
+      "description": "Test environment configuration",
+      "server": {
+        "port": 3001,
+        "host": "localhost"
+      },
+      "database": {
+        "url": "postgresql://localhost:5432/dms_test"
+      },
+      "logging": {
+        "level": "error",
+        "format": "json",
+        "enableConsole": false,
+        "enableFile": false
+      },
+      "upload": {
+        "maxFileSize": 1048576,
+        "maxFiles": 5,
+        "uploadDir": "./test-uploads"
+      }
+    }
+  },
+  "features": {
+    "authentication": {
+      "enabled": true,
+      "jwt": {
+        "secret": "your-jwt-secret-here",
+        "expiresIn": "24h"
+      }
+    },
+    "fileUpload": {
+      "enabled": true,
+      "allowedMimeTypes": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "text/plain",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ]
+    },
+    "cors": {
+      "enabled": true,
+      "origin": "*",
+      "credentials": false
+    },
+    "swagger": {
+      "enabled": true,
+      "routePrefix": "/docs"
+    },
+    "healthCheck": {
+      "enabled": true,
+      "endpoints": ["/health", "/ready"]
+    }
+  },
+  "cli": {
+    "commands": [
+      {
+        "name": "start",
+        "description": "Start the DMS application server",
+        "options": [
+          {
+            "name": "port",
+            "short": "p",
+            "description": "Port to bind to",
+            "default": "3000"
+          },
+          {
+            "name": "host",
+            "short": "h",
+            "description": "Host to bind to",
+            "default": "0.0.0.0"
+          },
+          {
+            "name": "env",
+            "description": "Environment (development, production, test)",
+            "default": "development"
+          }
+        ]
+      },
+      {
+        "name": "dev",
+        "description": "Start the DMS application in development mode",
+        "options": [
+          {
+            "name": "port",
+            "short": "p",
+            "description": "Port to bind to",
+            "default": "3000"
+          },
+          {
+            "name": "host",
+            "short": "h",
+            "description": "Host to bind to",
+            "default": "0.0.0.0"
+          }
+        ]
+      },
+      {
+        "name": "health",
+        "description": "Check application health",
+        "options": [
+          {
+            "name": "url",
+            "short": "u",
+            "description": "Application URL",
+            "default": "http://localhost:3000"
+          }
+        ]
+      },
+      {
+        "name": "config",
+        "description": "Show application configuration",
+        "options": [
+          {
+            "name": "format",
+            "short": "f",
+            "description": "Output format (json, yaml, table)",
+            "default": "table"
+          }
+        ]
+      }
+    ]
+  },
+  "setup": {
+    "requirements": [
+      "Node.js 18+",
+      "PostgreSQL 12+",
+      "npm or yarn"
+    ],
+    "installation": [
+      "npm install",
+      "cp .env.example .env",
+      "npm run build",
+      "npm run migrate",
+      "npm run seed"
+    ],
+    "development": [
+      "npm run dev",
+      "Visit http://localhost:3000/docs for API documentation"
+    ],
+    "production": [
+      "npm run build",
+      "npm start"
+    ]
+  }
+} 

@@ -1,7 +1,12 @@
 import { Document, DocumentStatus } from './Document.js';
 
+/**
+ * Document validator - handles BUSINESS RULE validation only
+ * Input validation is handled by DTOs (Zod schemas)
+ * Business rules are domain-specific logic that can be tested independently
+ */
 export class DocumentValidator {
-  // Individual field validations
+  // BUSINESS RULE: Validate filename format and content
   static validateFilename(filename: string): boolean {
     return filename.length > 0 && filename.length <= 255;
   }
@@ -90,42 +95,55 @@ export class DocumentValidator {
     return true;
   }
 
-  // Business rule validations
+  // BUSINESS RULE: Check if document can be archived
   static canBeArchived(document: Document): boolean {
+    // BUSINESS RULE: Only active documents can be archived
     return document.isActive();
   }
 
+  // BUSINESS RULE: Check if document can be restored
   static canBeRestored(document: Document): boolean {
+    // BUSINESS RULE: Only archived documents can be restored
     return document.isArchived();
   }
 
-  static canBeDeleted(document: Document): boolean {
-    return !document.isDeleted();
-  }
 
-  static canBeAccessedBy(document: Document, userId: string): boolean {
-    return document.canBeAccessedBy(userId);
-  }
 
+  // BUSINESS RULE: Check if file type is allowed
   static isValidFileType(mimetype: string): boolean {
+    // BUSINESS RULE: Only certain file types are allowed for security
     const allowedTypes = [
       'application/pdf',
-      'text/plain',
-      'text/csv',
-      'application/json',
       'image/jpeg',
       'image/png',
       'image/gif',
-      'image/webp',
-      'application/zip',
-      'application/x-zip-compressed'
+      'text/plain',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
-    
     return allowedTypes.includes(mimetype);
   }
 
+  // BUSINESS RULE: Check if file size is within limits
   static isValidFileSize(sizeInBytes: number): boolean {
+    // BUSINESS RULE: File size must be within acceptable limits
     const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
     return sizeInBytes > 0 && sizeInBytes <= maxSizeInBytes;
   }
+
+  // BUSINESS RULE: Check if document can be updated
+  static canBeUpdated(document: Document): boolean {
+    // BUSINESS RULE: Cannot update archived documents
+    // BUSINESS RULE: Cannot update documents that are being processed
+    return document.isActive();
+  }
+
+  // BUSINESS RULE: Check if tags are valid for this document type
+  static areTagsValidForDocumentType(tags: string[], mimetype: string): boolean {
+    // BUSINESS RULE: Certain document types require specific tags
+    // BUSINESS RULE: Tags must be relevant to the document content
+    return tags.length <= 10; // Placeholder - more complex logic would be implemented
+  }
+
+
 } 
