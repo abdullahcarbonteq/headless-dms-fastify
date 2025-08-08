@@ -36,4 +36,14 @@ export interface IAuthService {
    * @returns Promise<Result<boolean, Error>> - Success with comparison result or error
    */
   comparePassword(password: string, hashedPassword: string): Promise<Result<boolean, Error>>;
+
+  /**
+   * Generate a short-lived download token for documents
+   */
+  generateDownloadToken(payload: { docId: string }): Promise<Result<string, Error>>;
+
+  /**
+   * Verify short-lived download token
+   */
+  verifyDownloadToken(token: string): Promise<Result<{ docId: string }, Error>>;
 } 

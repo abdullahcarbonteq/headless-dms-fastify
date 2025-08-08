@@ -12,7 +12,7 @@ export class DrizzleUserRepository implements IUserRepository {
   async createUser(user: User): Promise<Result<User, Error>> {
     try {
       const [userRow] = await db.insert(users).values({
-        id: user.id || uuidv4(),
+        id: user.id,
         name: user.name,
         email: user.email,
         password_hash: user.passwordHash,

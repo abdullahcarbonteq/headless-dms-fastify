@@ -8,7 +8,6 @@ export default async function userRoutes(app: FastifyInstance) {
   app.post('/login', { preHandler: UserValidation.login }, UserController.login);
   
   app.get('/all', { preHandler: [requireAdmin, UserValidation.getAll] }, UserController.getAllUsers);
-  app.get('/:id', { preHandler: [verifyJWT, UserValidation.getUserById] }, UserController.getUserById);
   app.put('/:id', { preHandler: [requireAdmin, UserValidation.updateUser] }, UserController.updateUser);
   app.delete('/:id', { preHandler: [requireAdmin, UserValidation.deleteUser] }, UserController.deleteUser);
 }

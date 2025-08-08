@@ -15,6 +15,7 @@ export interface ApiResponse<T> {
   data?: T;
   message?: string;
   error?: string;
+  errors?: unknown;
   pagination?: PaginationInfo;
 }
 
@@ -48,11 +49,13 @@ export class ResponseHandler {
   static error(
     reply: FastifyReply,
     error: Error,
-    statusCode: number = 500
+    statusCode: number = 500,
+    details?: unknown
   ): FastifyReply {
     const response: ApiResponse<never> = {
       success: false,
-      error: error.message
+      error: error.message,
+      ...(details ? { errors: details } : {})
     };
 
     return reply.status(statusCode).send(response);

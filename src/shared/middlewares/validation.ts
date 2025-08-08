@@ -18,11 +18,12 @@ export function validateRequest(config: ValidationConfig) {
       if (config.body) {
         const bodyResult = config.body.safeParse(request.body);
         if (!bodyResult.success) {
-          return ResponseHandler.error(
-            reply,
-            new Error(`Invalid request body: ${bodyResult.error.message}`),
-            400
-          );
+          const issues = bodyResult.error.issues.map((i) => ({
+            path: i.path.join('.'),
+            message: i.message,
+            code: i.code,
+          }));
+          return ResponseHandler.error(reply, new Error('Invalid request body'), 400, issues);
         }
         request.body = bodyResult.data;
       }
@@ -31,11 +32,12 @@ export function validateRequest(config: ValidationConfig) {
       if (config.query) {
         const queryResult = config.query.safeParse(request.query);
         if (!queryResult.success) {
-          return ResponseHandler.error(
-            reply,
-            new Error(`Invalid query parameters: ${queryResult.error.message}`),
-            400
-          );
+          const issues = queryResult.error.issues.map((i) => ({
+            path: i.path.join('.'),
+            message: i.message,
+            code: i.code,
+          }));
+          return ResponseHandler.error(reply, new Error('Invalid query parameters'), 400, issues);
         }
         request.query = queryResult.data;
       }
@@ -44,11 +46,12 @@ export function validateRequest(config: ValidationConfig) {
       if (config.params) {
         const paramsResult = config.params.safeParse(request.params);
         if (!paramsResult.success) {
-          return ResponseHandler.error(
-            reply,
-            new Error(`Invalid path parameters: ${paramsResult.error.message}`),
-            400
-          );
+          const issues = paramsResult.error.issues.map((i) => ({
+            path: i.path.join('.'),
+            message: i.message,
+            code: i.code,
+          }));
+          return ResponseHandler.error(reply, new Error('Invalid path parameters'), 400, issues);
         }
         request.params = paramsResult.data;
       }

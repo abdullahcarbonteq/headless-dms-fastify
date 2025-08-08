@@ -108,6 +108,29 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     }
   }
 
+  async updateDocument(document: Document): Promise<Result<Document, Error>> {
+    try {
+      const [row] = await db
+        .update(documents)
+        .set({
+          filename: document.filename,
+          mimetype: document.mimetype,
+          path: document.path,
+          tags: JSON.stringify(document.tags),
+          description: document.description,
+          userId: document.userId,
+        })
+        .where(eq(documents.id, document.id))
+        .returning();
+
+      const entityResult = DocumentFactory.fromDatabaseRow(row);
+      if (entityResult.isErr()) return Result.Err(entityResult.unwrapErr());
+      return Result.Ok(entityResult.unwrap());
+    } catch (error) {
+      return Result.Err(error instanceof Error ? error : new Error('Failed to update document'));
+    }
+  }
+
   async searchDocuments(criteria: DocumentSearchCriteria, pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>> {
     try {
       let whereClause = undefined;

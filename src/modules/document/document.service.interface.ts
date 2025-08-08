@@ -45,6 +45,11 @@ export interface IDocumentService {
   getDocumentById(id: string): Promise<Result<Document | null, Error>>;
 
   /**
+   * Persist updated document entity
+   */
+  save(document: Document): Promise<Result<Document, Error>>;
+
+  /**
    * Complete file upload handler - processes multipart request and saves document
    * @param req - Fastify request with multipart data
    * @returns Promise<Result<Document, Error>> - Created document or error

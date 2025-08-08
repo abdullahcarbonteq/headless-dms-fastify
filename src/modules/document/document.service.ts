@@ -157,6 +157,16 @@ export class DocumentService implements IDocumentService {
     return Result.Ok(document);
   }
 
+  async save(document: Document): Promise<Result<Document, Error>> {
+    this.logger.debug('Saving updated document', { documentId: document.id });
+    const res = await this.documentRepository.updateDocument(document);
+    if (res.isErr()) {
+      this.logger.error('Failed to save updated document', res.unwrapErr(), { documentId: document.id });
+      return Result.Err(new Error('Failed to update document'));
+    }
+    return Result.Ok(res.unwrap());
+  }
+
   // File handling methods (merged from FileHandlerService and FileUploadService)
   
   /**

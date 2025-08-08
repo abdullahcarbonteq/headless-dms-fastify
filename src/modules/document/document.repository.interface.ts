@@ -1,4 +1,3 @@
-import { InsertDocumentDTO } from './document.dto.js';
 import { Document } from '../../entities/document/Document.js';
 import { Result } from '@carbonteq/fp';
 
@@ -28,10 +27,10 @@ export interface PaginatedResult<T> {
 export interface IDocumentRepository {
   /**
    * Create a new document in the store
-   * @param data - Document data
+   * @param data - Document entity
    * @returns Promise<Result<Document, Error>> - Success with document data or error
    */
-  createDocument(data: InsertDocumentDTO): Promise<Result<Document, Error>>;
+  createDocument(data: Document): Promise<Result<Document, Error>>;
 
   /**
    * Find document by ID
@@ -53,6 +52,12 @@ export interface IDocumentRepository {
    * @returns Promise<Result<boolean, Error>> - Success with deletion status or error
    */
   deleteDocument(id: string): Promise<Result<boolean, Error>>;
+
+  /**
+   * Update an existing document in the store
+   * @param document - Document entity with updated fields
+   */
+  updateDocument(document: Document): Promise<Result<Document, Error>>;
 
   /**
    * Search documents by criteria

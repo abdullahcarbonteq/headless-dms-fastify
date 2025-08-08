@@ -5,7 +5,7 @@ import { IConfigurationService } from '../interfaces/IConfigurationService.js';
 import { User } from '../../entities/user/User.js';
 import { Result } from '@carbonteq/fp';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { Secret, SignOptions, JwtPayload } from 'jsonwebtoken';
 
 @injectable()
 export class JWTAuthService implements IAuthService {
@@ -30,9 +30,11 @@ export class JWTAuthService implements IAuthService {
         email: user.email
       };
 
-      const token = jwt.sign(payload, this.config.jwt.secret as string, {
-        expiresIn: this.config.jwt.expiresIn,
-      });
+      const token = jwt.sign(
+        payload,
+        this.config.jwt.secret as Secret,
+        { expiresIn: this.config.jwt.expiresIn as unknown as SignOptions['expiresIn'] }
+      );
 
       this.logger.debug('JWT token generated successfully', { userId: user.id });
       return Result.Ok(token);
@@ -46,12 +48,33 @@ export class JWTAuthService implements IAuthService {
     try {
       this.logger.debug('Verifying JWT token');
       
-      const payload = jwt.verify(token, this.config.jwt.secret as string) as JWTPayload;
+      const payload = jwt.verify(token, this.config.jwt.secret as Secret) as JWTPayload;
       
       this.logger.debug('JWT token verified successfully', { userId: payload.userId });
       return Result.Ok(payload);
     } catch (error) {
       this.logger.warn('JWT token verification failed', error instanceof Error ? error : new Error('Unknown error'));
+      return Result.Err(error instanceof Error ? error : new Error('Invalid token'));
+    }
+  }
+
+  /**
+   * Generate a short-lived download token for a document
+   */
+  async generateDownloadToken(payload: { docId: string }): Promise<Result<string, Error>> {
+    try {
+      const token = jwt.sign(payload, this.config.jwt.secret as Secret, { expiresIn: '5m' });
+      return Result.Ok(token);
+    } catch (error) {
+      return Result.Err(error instanceof Error ? error : new Error('Failed to generate download token'));
+    }
+  }
+
+  async verifyDownloadToken(token: string): Promise<Result<{ docId: string }, Error>> {
+    try {
+      const payload = jwt.verify(token, this.config.jwt.secret as Secret) as { docId: string };
+      return Result.Ok(payload);
+    } catch (error) {
       return Result.Err(error instanceof Error ? error : new Error('Invalid token'));
     }
   }
