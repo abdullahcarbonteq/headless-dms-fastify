@@ -1,6 +1,7 @@
 import { User, UserData, CreateUserData } from './User.js';
 import { UserValidator } from './UserValidator.js';
 import { Result } from '@carbonteq/fp';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * User factory - provides static factory methods for creating users
@@ -18,8 +19,17 @@ export class UserFactory {
       return Result.Err(new Error('Invalid user creation data'));
     }
 
-    // Create user entity
-    const user = User.create(data);
+    // Create user entity with application-generated UUID
+    const now = new Date();
+    const user = new User(
+      uuidv4(),
+      data.name,
+      data.email,
+      data.passwordHash,
+      data.role,
+      now,
+      now
+    );
     
     // Validate the created user
     if (!user.validate()) {
@@ -96,8 +106,8 @@ export class UserFactory {
         email: row.email,
         passwordHash: row.password_hash,
         role: row.role,
-        createdAt: new Date(row.createdAt),
-        updatedAt: new Date(row.updatedAt || row.createdAt)
+        createdAt: row.createdAt ? new Date(row.createdAt) : row.created_at ? new Date(row.created_at) : new Date(),
+        updatedAt: row.updatedAt ? new Date(row.updatedAt) : row.updated_at ? new Date(row.updated_at) : new Date()
       };
 
       return this.fromData(userData);

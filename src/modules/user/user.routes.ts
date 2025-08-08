@@ -1,19 +1,14 @@
 import { FastifyInstance } from 'fastify';
-import { UserController } from './user.controller.js';
-import { verifyJWT, requireAdmin } from '../../middlewares/auth.js';
+import { UserController, UserValidation } from './user.controller.js';
+import { requireAdmin } from '../../middlewares/auth.js';
+import { verifyJWT } from '../../middlewares/auth.js';
 
 export default async function userRoutes(app: FastifyInstance) {
-  app.post('/register', UserController.register);
-  app.post('/login', UserController.login);
+  app.post('/register', { preHandler: UserValidation.register }, UserController.register);
+  app.post('/login', { preHandler: UserValidation.login }, UserController.login);
   
-  // Admin-only routes - specific routes first
-  app.get('/all', { preHandler: [requireAdmin] }, UserController.getAllUsers);
-  app.get('/protected', { preHandler: [requireAdmin] }, async (req, reply) => {
-    return reply.send({ message: 'You are authenticated as admin!', user: req.user });
-  });
-  
-  // Parameterized routes last
-  app.get('/:id', { preHandler: [requireAdmin] }, UserController.getUserById);
-  app.put('/:id', { preHandler: [requireAdmin] }, UserController.updateUser);
-  app.delete('/:id', { preHandler: [requireAdmin] }, UserController.deleteUser);
+  app.get('/all', { preHandler: [requireAdmin, UserValidation.getAll] }, UserController.getAllUsers);
+  app.get('/:id', { preHandler: [verifyJWT, UserValidation.getUserById] }, UserController.getUserById);
+  app.put('/:id', { preHandler: [requireAdmin, UserValidation.updateUser] }, UserController.updateUser);
+  app.delete('/:id', { preHandler: [requireAdmin, UserValidation.deleteUser] }, UserController.deleteUser);
 }

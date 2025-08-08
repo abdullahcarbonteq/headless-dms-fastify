@@ -7,3 +7,18 @@ const pool = new Pool({
 });
 
 export const db = drizzle(pool);
+
+export async function pingDatabase(): Promise<boolean> {
+  try {
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function closeDatabase(): Promise<void> {
+  await pool.end();
+}

@@ -237,11 +237,7 @@ export class Document extends BaseEntity<DocumentData> {
     return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
   }
 
-  getFileSize(): Promise<number> {
-    // This would typically interact with the file system
-    // For now, return a placeholder
-    return Promise.resolve(0);
-  }
+  
 
   /**
    * Add multiple tags at once

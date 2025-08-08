@@ -6,13 +6,7 @@ import { container } from '../config/container.js';
 import { ILogger } from '../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../shared/interfaces/IConfigurationService.js';
 
-/**
- * CLI Application
- * 
- * 12 FACTOR APP: Entry Point Separation
- * Professional CLI interface using Commander.js
- * Provides multiple commands for different application modes
- */
+  /** CLI application using Commander.js */
 export class CLIApplication {
   private program: Command;
   private logger: ILogger;
@@ -25,9 +19,7 @@ export class CLIApplication {
     this.setupCommands();
   }
 
-  /**
-   * Setup all CLI commands
-   */
+  /** Setup CLI commands */
   private setupCommands(): void {
     // Set program metadata
     this.program

@@ -5,6 +5,7 @@ import { RegisterDTO } from './user.register.dto.js';
 import { LoginDTO } from './user.login.dto.js';
 import { IUserService } from './user.service.interface.js';
 import { User } from '../../entities/user/User.js';
+import { UserFactory } from '../../entities/user/UserFactory.js';
 import { Result } from '@carbonteq/fp';
 import { IAuthService } from '../../shared/interfaces/IAuthService.js';
 import { UserValidator } from '../../entities/user/UserValidator.js';
@@ -61,9 +62,20 @@ export class UserService implements IUserService {
     }
     const passwordHash = hashResult.unwrap();
 
-    // Create user
-    this.logger.debug('Creating new user');
-    const createResult = await this.userRepository.createUser({ ...data, passwordHash });
+    // Build user entity via factory and persist
+    this.logger.debug('Creating new user entity');
+    const userEntityResult = UserFactory.createUser({
+      name: data.name,
+      email: data.email,
+      passwordHash,
+      role: data.role,
+    });
+    if (userEntityResult.isErr()) {
+      this.logger.error('Failed to build user entity', userEntityResult.unwrapErr(), { email: data.email });
+      return Result.Err(new Error('Failed to create user'));
+    }
+
+    const createResult = await this.userRepository.createUser(userEntityResult.unwrap());
     if (createResult.isErr()) {
       this.logger.error('Failed to create user', createResult.unwrapErr(), { email: data.email });
       return Result.Err(new Error('Failed to create user'));
@@ -135,18 +147,23 @@ export class UserService implements IUserService {
     return Result.Ok(user);
   }
 
-  async getAllUsers(): Promise<Result<User[], Error>> {
-    this.logger.info('Getting all users');
+  async getAllUsers(pagination?: { page?: number; limit?: number }): Promise<Result<User[] | { data: User[]; page: number; limit: number; total: number; totalPages: number }, Error>> {
+    this.logger.info('Getting all users', { pagination });
     
-    const usersResult = await this.userRepository.getAllUsers();
+    const normalized = pagination ? { page: pagination.page ?? 1, limit: pagination.limit ?? 10 } : undefined;
+    const usersResult = await this.userRepository.getAllUsers(normalized);
     if (usersResult.isErr()) {
       this.logger.error('Failed to get all users', usersResult.unwrapErr());
       return Result.Err(new Error('Failed to get users'));
     }
 
-    const users = usersResult.unwrap();
-    this.logger.info('Retrieved all users', { count: users.length });
-    return Result.Ok(users);
+    const data = usersResult.unwrap();
+    if (Array.isArray(data)) {
+      this.logger.info('Retrieved all users (non-paginated)', { count: data.length });
+      return Result.Ok(data);
+    }
+    this.logger.info('Retrieved paginated users', { count: data.data.length, total: data.total, page: data.page });
+    return Result.Ok(data);
   }
 
   async updateUser(id: string, data: { name?: string; email?: string; password?: string; role?: string }): Promise<Result<User, Error>> {
@@ -190,22 +207,36 @@ export class UserService implements IUserService {
       }
     }
 
-    // Prepare update data
-    const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.email) updateData.email = data.email;
-    if (data.role) updateData.role = data.role;
+    // Mutate entity state using entity methods
+    let userToUpdate = existingUser;
+    if (data.name) {
+      const res = userToUpdate.updateName(data.name);
+      if (res.isErr()) return Result.Err(res.unwrapErr());
+      userToUpdate = res.unwrap();
+    }
+    if (data.email) {
+      const res = userToUpdate.updateEmail(data.email);
+      if (res.isErr()) return Result.Err(res.unwrapErr());
+      userToUpdate = res.unwrap();
+    }
+    if (data.role) {
+      const res = userToUpdate.updateRole(data.role as 'user' | 'admin');
+      if (res.isErr()) return Result.Err(res.unwrapErr());
+      userToUpdate = res.unwrap();
+    }
     if (data.password) {
       const hashResult = await this.authService.hashPassword(data.password);
       if (hashResult.isErr()) {
         this.logger.error('Failed to hash password for update', hashResult.unwrapErr(), { id });
         return Result.Err(new Error('Failed to hash password'));
       }
-      updateData.passwordHash = hashResult.unwrap();
+      const res = userToUpdate.updatePassword(hashResult.unwrap());
+      if (res.isErr()) return Result.Err(res.unwrapErr());
+      userToUpdate = res.unwrap();
     }
 
-    // Update user
-    const updateResult = await this.userRepository.updateUser(id, updateData);
+    // Persist updated entity
+    const updateResult = await this.userRepository.updateUser(userToUpdate);
     if (updateResult.isErr()) {
       this.logger.error('Failed to update user', updateResult.unwrapErr(), { id });
       return Result.Err(new Error('Failed to update user'));

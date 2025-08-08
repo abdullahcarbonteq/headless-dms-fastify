@@ -4,13 +4,7 @@ import { ILogger } from '../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../shared/interfaces/IConfigurationService.js';
 import { FastifyBootstrap } from './FastifyBootstrap.js';
 
-/**
- * Application Bootstrap
- * 
- * 12 FACTOR APP: Entry Point Separation
- * Orchestrates the entire application startup process
- * Separates concerns and makes the application more modular
- */
+/** Application orchestrator (startup, shutdown, and wiring) */
 export class ApplicationBootstrap {
   private logger: ILogger;
   private config: IConfigurationService;
@@ -18,27 +12,21 @@ export class ApplicationBootstrap {
   private server: any = null;
 
   constructor() {
-    // Initialize DI container and get core services
     this.logger = container.resolve<ILogger>('ILogger');
     this.config = container.resolve<IConfigurationService>('IConfigurationService');
     this.fastifyBootstrap = new FastifyBootstrap(this.logger, this.config);
   }
 
-  /**
-   * Initialize the application
-   */
+  /** Initialize the application */
   async initialize(): Promise<void> {
     this.logger.info('🚀 Initializing DMS Application...');
 
     try {
-      // Validate configuration
       this.config.validate();
       this.logger.info('✅ Configuration validated successfully');
 
-      // Register Fastify plugins
       await this.fastifyBootstrap.registerPlugins();
 
-      // Register application routes
       await this.fastifyBootstrap.registerRoutes();
 
       this.logger.info('✅ Application initialization completed successfully');
@@ -48,9 +36,7 @@ export class ApplicationBootstrap {
     }
   }
 
-  /**
-   * Start the application server
-   */
+  /** Start the application server */
   async start(): Promise<void> {
     const PORT = this.config.server.port || 3000;
     const HOST = this.config.server.host || '0.0.0.0';
@@ -62,14 +48,11 @@ export class ApplicationBootstrap {
     });
 
     try {
-      // Start the Fastify server
       await this.fastifyBootstrap.start(PORT, HOST);
       this.server = this.fastifyBootstrap.getApp();
 
-      // Log application information
       this.logApplicationInfo();
 
-      // Setup graceful shutdown
       this.setupGracefulShutdown();
 
     } catch (error) {
@@ -78,9 +61,7 @@ export class ApplicationBootstrap {
     }
   }
 
-  /**
-   * Stop the application server
-   */
+  /** Stop the application server */
   async stop(): Promise<void> {
     this.logger.info('🛑 Stopping application server...');
 
@@ -95,9 +76,7 @@ export class ApplicationBootstrap {
     }
   }
 
-  /**
-   * Log application information
-   */
+  /** Log application information */
   private logApplicationInfo(): void {
     this.logger.info('📊 Application Information', {
       nodeVersion: process.version,
@@ -112,9 +91,7 @@ export class ApplicationBootstrap {
     });
   }
 
-  /**
-   * Setup graceful shutdown handlers
-   */
+  /** Setup graceful shutdown handlers */
   private setupGracefulShutdown(): void {
     const gracefulShutdown = async (signal: string) => {
       this.logger.info(`🛑 Received ${signal}. Starting graceful shutdown...`);
@@ -132,22 +109,18 @@ export class ApplicationBootstrap {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-    // Handle uncaught exceptions
     process.on('uncaughtException', (error: Error) => {
       this.logger.error('❌ Uncaught Exception:', error);
       gracefulShutdown('uncaughtException');
     });
 
-    // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
       this.logger.error('❌ Unhandled Rejection:', new Error(`Promise rejected: ${reason}`), { promise: promise.toString() });
       gracefulShutdown('unhandledRejection');
     });
   }
 
-  /**
-   * Get the Fastify instance (for testing)
-   */
+  /** Get the Fastify instance (for testing) */
   getFastifyInstance(): any {
     return this.fastifyBootstrap.getApp();
   }

@@ -36,7 +36,7 @@ export interface IUserService {
    * Get all users
    * @returns Promise<Result<User[], Error>> - Success with all users or error
    */
-  getAllUsers(): Promise<Result<User[], Error>>;
+  getAllUsers(pagination?: { page?: number; limit?: number }): Promise<Result<User[] | { data: User[]; page: number; limit: number; total: number; totalPages: number }, Error>>;
 
   /**
    * Update user information

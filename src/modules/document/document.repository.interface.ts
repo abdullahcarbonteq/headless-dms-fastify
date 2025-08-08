@@ -12,13 +12,11 @@ export interface DocumentSearchCriteria {
   userId?: string;
 }
 
-// Pagination options
 export interface PaginationOptions {
   page: number;
   limit: number;
 }
 
-// Paginated result
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -64,9 +62,4 @@ export interface IDocumentRepository {
    */
   searchDocuments(criteria: DocumentSearchCriteria, pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>>;
 
-  // TODO: Uncomment in cleanup phase when document management endpoints are added
-  /*
-  updateDocument(id: string, data: Partial<InsertDocumentDTO>): Promise<Result<Document, Error>>;
-  getDocumentsByUserId(userId: string, pagination?: PaginationOptions): Promise<Result<Document[] | PaginatedResult<Document>, Error>>;
-  */
 } 

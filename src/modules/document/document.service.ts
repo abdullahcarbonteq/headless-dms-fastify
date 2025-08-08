@@ -3,6 +3,7 @@ import { IDocumentRepository } from './document.repository.interface.js';
 import { ILogger } from '../../shared/interfaces/ILogger.js';
 import { InsertDocumentDTO, uploadSchema } from './document.dto.js';
 import { IDocumentService, Document } from './document.service.interface.js';
+import { DocumentFactory } from '../../entities/document/DocumentFactory.js';
 import { Result } from '@carbonteq/fp';
 import { PaginationOptions, PaginatedResult } from './document.repository.interface.js';
 import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
@@ -31,8 +32,22 @@ export class DocumentService implements IDocumentService {
       userId: data.userId 
     });
     
-    this.logger.debug('Creating document in repository');
-    const createResult = await this.documentRepository.createDocument(data);
+    // Build document entity via factory
+    const entityResult = DocumentFactory.createDocument({
+      filename: data.filename,
+      mimetype: data.mimetype,
+      path: data.path,
+      tags: typeof data.tags === 'string' ? (() => { try { return JSON.parse(data.tags); } catch { return []; } })() : [],
+      description: data.description ?? null,
+      userId: data.userId,
+    });
+    if (entityResult.isErr()) {
+      this.logger.error('Failed to build document entity', entityResult.unwrapErr(), { filename: data.filename });
+      return Result.Err(new Error('Failed to create document'));
+    }
+
+    this.logger.debug('Persisting document entity in repository');
+    const createResult = await this.documentRepository.createDocument(entityResult.unwrap());
     
     if (createResult.isErr()) {
       this.logger.error('Failed to create document', createResult.unwrapErr(), { 
@@ -205,37 +220,31 @@ export class DocumentService implements IDocumentService {
       ));
     }
 
-    // Validate file type (if allowedMimeTypes is configured)
-    if (this.config.app.upload.allowedMimeTypes && this.config.app.upload.allowedMimeTypes.length > 0) {
-      if (!this.config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
-        this.logger.warn('File type not allowed', { 
-          filename: fileData.fields.filename, 
-          mimetype: fileData.file.mimetype 
-        });
-        return Result.Err(new Error(
-          `File type not allowed. Allowed types: ${this.config.app.upload.allowedMimeTypes.join(', ')}`
-        ));
-      }
+    // Validate file type
+    if (this.config.app.upload.allowedMimeTypes && !this.config.app.upload.allowedMimeTypes.includes(fileData.file.mimetype)) {
+      this.logger.warn('File type not allowed', { 
+        filename: fileData.fields.filename, 
+        mimetype: fileData.file.mimetype 
+      });
+      return Result.Err(new Error(
+        `File type not allowed. Allowed types: ${this.config.app.upload.allowedMimeTypes?.join(', ') || 'none specified'}`
+      ));
     }
 
     // Parse tags
     let tagsString = '[]';
     if (fileData.fields.tags) {
-      try {
-        if (typeof fileData.fields.tags === 'string') {
-          const parsed = JSON.parse(fileData.fields.tags);
-          if (Array.isArray(parsed)) {
-            tagsString = JSON.stringify(parsed.map(String));
-          } else if (typeof parsed === 'string') {
-            tagsString = JSON.stringify([parsed]);
-          } else {
-            tagsString = '[]';
-          }
+      if (typeof fileData.fields.tags === 'string') {
+        // Try to parse as JSON first, fallback to comma-separated
+        const parseResult = this.parseTags(fileData.fields.tags);
+        if (parseResult.isOk()) {
+          tagsString = parseResult.unwrap();
         } else {
-          tagsString = JSON.stringify(fileData.fields.tags);
+          // Fallback to comma-separated parsing
+          tagsString = JSON.stringify(fileData.fields.tags.split(',').map((t: string) => t.trim()));
         }
-      } catch {
-        tagsString = JSON.stringify(fileData.fields.tags.split(',').map((t: string) => t.trim()));
+      } else {
+        tagsString = JSON.stringify(fileData.fields.tags);
       }
     }
 
@@ -261,6 +270,26 @@ export class DocumentService implements IDocumentService {
 
     this.logger.info('File upload processed successfully', { filename: fileData.fields.filename });
     return Result.Ok(validation.data);
+  }
+
+  /**
+   * Parse tags string using Railway pattern
+   * @param tagsString - String containing tags (JSON or comma-separated)
+   * @returns Result<string, Error> - Parsed tags as JSON string or error
+   */
+  private parseTags(tagsString: string): Result<string, Error> {
+    try {
+      const parsed = JSON.parse(tagsString);
+      if (Array.isArray(parsed)) {
+        return Result.Ok(JSON.stringify(parsed.map(String)));
+      } else if (typeof parsed === 'string') {
+        return Result.Ok(JSON.stringify([parsed]));
+      } else {
+        return Result.Ok('[]');
+      }
+    } catch {
+      return Result.Err(new Error('Invalid JSON format for tags'));
+    }
   }
 
   /**

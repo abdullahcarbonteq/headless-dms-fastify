@@ -30,7 +30,9 @@ export class JWTAuthService implements IAuthService {
         email: user.email
       };
 
-      const token = jwt.sign(payload, this.config.jwt.secret as string);
+      const token = jwt.sign(payload, this.config.jwt.secret as string, {
+        expiresIn: this.config.jwt.expiresIn,
+      });
 
       this.logger.debug('JWT token generated successfully', { userId: user.id });
       return Result.Ok(token);

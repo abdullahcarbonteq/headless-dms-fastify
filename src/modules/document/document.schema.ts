@@ -9,5 +9,4 @@ export const documents = pgTable('documents', {
   description: text('description'),
   userId: text('user_id').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-  //dummy: text('dummy').default('dummy'),
 });
