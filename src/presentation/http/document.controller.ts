@@ -4,7 +4,6 @@ import { ResponseHandler } from './utils/ResponseHandler.js';
 import { ValidationMiddleware } from './middlewares/validation.js';
 import { paginationQuerySchema } from '../../shared/dto/pagination.dto.js';
 import { z } from 'zod';
-import { Result } from '@carbonteq/fp';
 import { updateDocumentMetadataRequestSchema } from './validators/document.update-metadata.request.schema.js';
 import { searchDocumentsRequestSchema } from './validators/document.search.request.schema.js';
 import { UploadDocumentUseCase } from '../../application/use-cases/document/UploadDocumentUseCase.js';
@@ -15,7 +14,6 @@ import { DeleteDocumentUseCase } from '../../application/use-cases/document/Dele
 import { SearchDocumentsUseCase } from '../../application/use-cases/document/SearchDocumentsUseCase.js';
 import { GenerateDownloadLinkUseCase } from '../../application/use-cases/document/GenerateDownloadLinkUseCase.js';
 import type { AuthPort } from '../../application/ports/AuthPort.js';
-import { ILogger } from '../../shared/interfaces/ILogger.js';
 import type { FileStoragePort } from '../../application/ports/FileStoragePort.js';
 
 const uploadDocument = container.resolve(UploadDocumentUseCase);
@@ -27,14 +25,13 @@ const searchDocuments = container.resolve(SearchDocumentsUseCase);
 const generateDownloadLink = container.resolve(GenerateDownloadLinkUseCase);
 const authService = container.resolve<AuthPort>('AuthPort');
 const fileStorage = container.resolve<FileStoragePort>('FileStoragePort');
-const logger = container.resolve<ILogger>('ILogger').child({ module: 'DocumentHttpController' });
 
 const documentIdSchema = z.object({ id: z.uuid() });
 const downloadTokenSchema = z.object({ token: z.string() });
 
 export const DocumentHttpController = {
   async upload(req: FastifyRequest, reply: FastifyReply) {
-    // Approach A: controller parses multipart, saves via FileStoragePort, then calls use case
+    // Save the first file immediately to consume the stream and avoid hanging
     try {
       // Extract file and fields (enforce single file)
       // @ts-ignore - fastify multipart provides parts() at runtime
@@ -49,7 +46,6 @@ export const DocumentHttpController = {
           if (part.type === 'file') {
             if (!filePart) {
               filePart = part; // { filename, mimetype, file: Readable }
-              // Consume the file stream immediately to avoid stalling the iterator
               const saveRes = await fileStorage.save(part.file, part.filename, part.mimetype);
               if (saveRes.isErr()) {
                 return ResponseHandler.error(reply, saveRes.unwrapErr(), 400);
@@ -77,7 +73,6 @@ export const DocumentHttpController = {
       if (!saved || !providedFilename || !providedMimetype) {
         return ResponseHandler.error(reply, new Error('Missing file or required fields (filename, mimetype)'), 400);
       }
-      // Note: file already saved during parts iteration; `saved` contains file info
 
       // Get user id from JWT (set by verifyJWT/requireAdmin)
       const userId = (req.user as any)?.userId;
@@ -104,15 +99,16 @@ export const DocumentHttpController = {
       }
       const description = typeof fields.description === 'string' ? fields.description : undefined;
 
-      // Call use case
+      // Call use case with already-saved file path (path mode supported by use case)
       const result = await uploadDocument.execute({
-        filename: saved.filename,
-        mimetype: saved.mimetype,
-        path: saved.path,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...( { path: saved.path } as any ),
+        filename: providedFilename,
+        mimetype: providedMimetype,
         tags,
         description,
         userId,
-      });
+      } as any);
       return ResponseHandler.upload(reply, result);
     } catch (err) {
       return ResponseHandler.error(reply, err instanceof Error ? err : new Error('Upload failed'));
@@ -156,7 +152,7 @@ export const DocumentHttpController = {
     const { id } = req.params as { id: string };
     const res = await generateDownloadLink.execute({ id });
     if (res.isErr()) return ResponseHandler.error(reply, res.unwrapErr(), 500);
-    return ResponseHandler.success(reply, Result.Ok(res.unwrap()), 200);
+    return ResponseHandler.success(reply, res, 200);
   },
 
   async downloadDocument(req: FastifyRequest, reply: FastifyReply) {

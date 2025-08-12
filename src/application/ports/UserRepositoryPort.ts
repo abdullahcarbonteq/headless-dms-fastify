@@ -1,18 +1,6 @@
 import { Result } from '@carbonteq/fp';
 import { User } from '../../domain/entities/user/User.js';
-
-export interface PaginationOptions {
-  page: number;
-  limit: number;
-}
-
-export interface PaginatedResult<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+import type { PaginationOptions, PaginatedResult } from '../../shared/dto/pagination.dto.js';
 
 export interface UserRepositoryPort {
   createUser(user: User): Promise<Result<User, Error>>;

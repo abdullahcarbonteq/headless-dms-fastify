@@ -1,4 +1,24 @@
-import { DatabaseConfig, JWTConfig, ServerConfig, AppConfig } from '../../infrastructure/config/schemas.js';
+
+export interface DatabaseConfig {
+  url: string;
+}
+
+export interface JWTConfig {
+  secret: string;
+  expiresIn: string;
+}
+
+export interface ServerConfig {
+  port: number;
+  host: string;
+}
+
+export interface AppConfig {
+  environment: 'development' | 'production' | 'test';
+  cors: { origin: string; credentials: boolean };
+  logging: { level: 'debug' | 'info' | 'warn' | 'error'; format: 'json' | 'text'; enableConsole: boolean; enableFile: boolean; filePath?: string };
+  upload: { maxFileSize: number; allowedMimeTypes?: string[]; uploadDir: string; maxFiles: number };
+}
 
 
 export interface IConfigurationService {

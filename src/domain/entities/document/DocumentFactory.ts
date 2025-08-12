@@ -1,4 +1,4 @@
-import { Document, DocumentStatus } from './Document.ts';
+import { Document, DocumentStatus } from './Document.js';
 import { FileName } from '../../value-objects/FileName.js';
 import { PathVO } from '../../value-objects/PathVO.js';
 import { Result } from '@carbonteq/fp';

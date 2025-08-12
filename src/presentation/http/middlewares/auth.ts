@@ -1,12 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Result } from '@carbonteq/fp';
 import { ResponseHandler } from '../utils/ResponseHandler.js';
+import type { JWTPayload } from '../../../application/ports/AuthPort.js';
 
-type JWTPayload = {
-  userId: string;
-  role: string;
-  email: string;
-};
 
 async function verifyJWTToken(request: FastifyRequest): Promise<Result<JWTPayload, Error>> {
   try {

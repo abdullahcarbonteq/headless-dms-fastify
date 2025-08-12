@@ -9,7 +9,6 @@ import { IConfigurationService } from '../../shared/interfaces/IConfigurationSer
 import { ConfigurationService } from '../config/ConfigurationService.js';
 import type { AuthPort } from '../../application/ports/AuthPort.js';
 import { JWTAuthService } from '../auth/JWTAuthService.js';
-import { BusinessRuleService } from '../../application/services/BusinessRuleService.js';
 
 // Register logger
 container.registerSingleton<ILogger>('ILogger', CompositeLogger);
@@ -25,7 +24,5 @@ container.registerSingleton('FileStoragePort', FileSystemStorageAdapter);
 // Register auth service (infra adapter)
 container.registerSingleton<AuthPort>('AuthPort', JWTAuthService);
 
-// Register business rule service
-container.registerSingleton<BusinessRuleService>('BusinessRuleService', BusinessRuleService);
 
 export { container }; 

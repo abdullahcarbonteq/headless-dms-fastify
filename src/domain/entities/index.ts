@@ -1,5 +1,5 @@
 // Base entities
-export { BaseEntity } from './base/BaseEntity.ts';
+export { BaseEntity } from './base/BaseEntity.js';
 
 // User entities
 export { User } from './user/User.js';

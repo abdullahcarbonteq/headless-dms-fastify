@@ -31,12 +31,13 @@ function loadConfig(): Config {
         filePath: process.env.LOG_FILE_PATH,
       },
       upload: {
-        maxFileSize: process.env.UPLOAD_MAX_FILE_SIZE,
+        // Align names with types/fastify.d.ts declarations
+        maxFileSize: process.env.MAX_FILE_SIZE ?? process.env.UPLOAD_MAX_FILE_SIZE,
         allowedMimeTypes: process.env.UPLOAD_ALLOWED_MIME_TYPES 
           ? process.env.UPLOAD_ALLOWED_MIME_TYPES.split(',').map(type => type.trim())
           : undefined,
         uploadDir: process.env.UPLOAD_DIR,
-        maxFiles: process.env.UPLOAD_MAX_FILES,
+        maxFiles: process.env.MAX_FILES ?? process.env.UPLOAD_MAX_FILES,
       },
     },
   };

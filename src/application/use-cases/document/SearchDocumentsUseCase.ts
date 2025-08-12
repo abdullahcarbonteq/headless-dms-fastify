@@ -1,7 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import type { ILogger } from '../../../shared/interfaces/ILogger.js';
-import type { DocumentRepositoryPort, PaginationOptions } from '../../ports/DocumentRepositoryPort.js';
+import type { DocumentRepositoryPort } from '../../ports/DocumentRepositoryPort.js';
+import type { PaginationOptions } from '../../../shared/dto/pagination.dto.js';
 import type {
   SearchDocumentsInput,
   PaginatedSearchDocumentsOutput,

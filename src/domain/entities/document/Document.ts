@@ -1,6 +1,7 @@
 import { BaseEntity } from '../base/BaseEntity.js';
 import { Result } from '@carbonteq/fp';
 import { Description } from '../../value-objects/Description.js';
+import { FileName } from '../../value-objects/FileName.js';
 import { TagList } from '../../value-objects/TagList.js';
 
 export interface DocumentData {
@@ -132,8 +133,6 @@ export class Document extends BaseEntity<DocumentData> {
   }
 
   updateFilename(newFilename: string): Result<Document, Error> {
-    // Reuse FileName VO by lazy import to avoid circular deps
-    const { FileName } = require('../../value-objects/FileName.js');
     const nameRes = FileName.create(newFilename);
     if (nameRes.isErr()) return Result.Err(nameRes.unwrapErr());
     

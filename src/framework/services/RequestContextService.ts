@@ -13,14 +13,13 @@ export class RequestContextService {
    * Sets up request ID, timing, and metadata
    */
   static initializeRequestContext(request: FastifyRequest): void {
-    // Generate unique request ID
-    request.id = crypto.randomUUID();
+    // Do not override Fastify's own request.id; use it as correlation id fallback
     
     // Set request start time
     request.startTime = Date.now();
     
     // Set correlation ID (for distributed tracing)
-    request.correlationId = request.headers['x-correlation-id'] as string || request.id;
+    request.correlationId = (request.headers['x-correlation-id'] as string) || request.id;
     
     // Extract user agent
     request.userAgent = request.headers['user-agent'] || 'Unknown';

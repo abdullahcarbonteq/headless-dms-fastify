@@ -1,18 +1,16 @@
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import fs from 'fs';
 import path from 'path';
 import { FileStoragePort, SavedFileInfo } from '../../application/ports/FileStoragePort.js';
-import { ConfigurationService } from '../config/ConfigurationService.js';
+import type { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 
 @injectable()
 export class FileSystemStorageAdapter implements FileStoragePort {
   private readonly uploadDir: string;
 
-  constructor() {
-    // We can safely read config statically here; or inject a config port later if needed
-    const config = new ConfigurationService();
-    this.uploadDir = config.app.upload.uploadDir;
+  constructor(@inject('IConfigurationService') private readonly config: IConfigurationService) {
+    this.uploadDir = this.config.app.upload.uploadDir;
   }
 
   async save(fileStream: NodeJS.ReadableStream, originalFilename: string, mimetype: string): Promise<Result<SavedFileInfo, Error>> {
