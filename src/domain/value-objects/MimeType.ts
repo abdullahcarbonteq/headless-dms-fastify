@@ -17,8 +17,6 @@ export class MimeType {
       return Result.Err(new Error('Invalid MIME type'));
     }
     const mt = raw.trim().toLowerCase();
-    // Allow any type, but if allowed list configured, one could enforce here
-    // For now, accept common types and any vendor-specific string
     if (!COMMON_TYPES.has(mt) && !mt.startsWith('application/') && !mt.startsWith('image/') && !mt.startsWith('text/')) {
       return Result.Err(new Error('Unsupported MIME type'));
     }

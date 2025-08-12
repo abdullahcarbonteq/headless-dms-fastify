@@ -1,7 +1,3 @@
-/**
- * Base entity class providing common functionality
- * All entities should extend this class
- */
 export abstract class BaseEntity<T> {
   protected _id: string;
   protected _createdAt: Date;
@@ -32,13 +28,13 @@ export abstract class BaseEntity<T> {
   abstract clone(): BaseEntity<T>;
 
   // Common utility methods
-  isNew(): boolean {
+  /*isNew(): boolean {
     return !this._id || this._id === '';
   }
 
   equals(other: BaseEntity<T>): boolean {
     return this._id === other._id;
-  }
+  }*/
 
   // Update timestamp when entity is modified
   protected markAsUpdated(): void {

@@ -3,7 +3,6 @@ import { Result } from '@carbonteq/fp';
 import { Description } from '../../value-objects/Description.js';
 import { TagList } from '../../value-objects/TagList.js';
 
-// Document data interface
 export interface DocumentData {
   id: string;
   filename: string;
@@ -54,7 +53,6 @@ export class Document extends BaseEntity<DocumentData> {
     this._status = status;
   }
 
-  // Getters
   get filename(): string { return this._filename; }
   get mimetype(): string { return this._mimetype; }
   get path(): string { return this._path; }
@@ -100,7 +98,7 @@ export class Document extends BaseEntity<DocumentData> {
       return Result.Err(new Error('Tag already exists'));
     }
     
-    // BUSINESS RULE: Maximum 10 tags per document
+    //Maximum 10 tags per document
     if (this._tags.length >= 10) {
       return Result.Err(new Error('Maximum 10 tags allowed per document'));
     }
@@ -241,32 +239,30 @@ export class Document extends BaseEntity<DocumentData> {
   
 
   /**
-   * Add multiple tags at once
-   * @param tags - Array of tags to add
+   * Add multiple tags at once (
    */
-  addTags(tags: string[]): Result<Document, Error> {
-    for (const tag of tags) {
-      const result = this.addTag(tag);
-      if (result.isErr()) {
-        return result;
-      }
-    }
-    return Result.Ok(this);
-  }
+  // addTags(tags: string[]): Result<Document, Error> {
+  //   for (const tag of tags) {
+  //     const result = this.addTag(tag);
+  //     if (result.isErr()) {
+  //       return result;
+  //     }
+  //   }
+  //   return Result.Ok(this);
+  // }
 
   /**
-   * Remove multiple tags at once
-   * @param tags - Array of tags to remove
+   * Remove multiple tags at once 
    */
-  removeTags(tags: string[]): Result<Document, Error> {
-    for (const tag of tags) {
-      const result = this.removeTag(tag);
-      if (result.isErr()) {
-        return result;
-      }
-    }
-    return Result.Ok(this);
-  }
+  // removeTags(tags: string[]): Result<Document, Error> {
+  //   for (const tag of tags) {
+  //     const result = this.removeTag(tag);
+  //     if (result.isErr()) {
+  //       return result;
+  //     }
+  //   }
+  //   return Result.Ok(this);
+  // }
 
   /**
    * Replace all tags
@@ -286,9 +282,7 @@ export class Document extends BaseEntity<DocumentData> {
     return Result.Ok(this);
   }
 
-  /**
-   * Get document metadata
-   */
+  
   getMetadata(): {
     filename: string;
     mimetype: string;
@@ -311,21 +305,16 @@ export class Document extends BaseEntity<DocumentData> {
     };
   }
 
-  /**
-   * Check if document can be modified
-   */
+  
   canBeModified(): boolean {
     return this.isActive() && !this.isDeleted();
   }
 
-  /**
-   * Check if document can be viewed
-   */
+  
   canBeViewed(): boolean {
     return !this.isDeleted();
   }
 
-  // Validation
   validate(): boolean {
     return true; // Construction and updates validated via Value Objects
   }

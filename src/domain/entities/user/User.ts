@@ -23,10 +23,6 @@ export interface CreateUserData {
   role: 'user' | 'admin';
 }
 
-/**
- * User entity - encapsulates all user business logic
- * Independent of any external agency (database, framework, etc.)
- */
 export class User extends BaseEntity<UserData> {
   private _name: string;
   private _email: string;
@@ -77,12 +73,10 @@ export class User extends BaseEntity<UserData> {
     const nameRes = UserName.create(newName);
     if (nameRes.isErr()) return Result.Err(nameRes.unwrapErr());
     
-    // BUSINESS RULE: Name cannot be empty
     if (!newName.trim()) {
       return Result.Err(new Error('Name cannot be empty'));
     }
     
-    // BUSINESS RULE: Name cannot be the same as current
     if (this._name === newName.trim()) {
       return Result.Err(new Error('New name must be different from current name'));
     }
@@ -107,12 +101,10 @@ export class User extends BaseEntity<UserData> {
     const emailRes = EmailAddress.create(newEmail);
     if (emailRes.isErr()) return Result.Err(emailRes.unwrapErr());
     
-    // BUSINESS RULE: Email cannot be empty
     if (!newEmail.trim()) {
       return Result.Err(new Error('Email cannot be empty'));
     }
     
-    // BUSINESS RULE: Email cannot be the same as current
     if (this._email.toLowerCase() === newEmail.trim().toLowerCase()) {
       return Result.Err(new Error('New email must be different from current email'));
     }
@@ -120,7 +112,6 @@ export class User extends BaseEntity<UserData> {
     this._email = emailRes.unwrap().value;
     this.markAsUpdated();
     
-    // Ensure entity is still valid after state change
     if (!this.validate()) {
       return Result.Err(new Error('Entity became invalid after state change'));
     }
@@ -137,12 +128,11 @@ export class User extends BaseEntity<UserData> {
     const passRes = PasswordHash.create(newPasswordHash);
     if (passRes.isErr()) return Result.Err(passRes.unwrapErr());
     
-    // BUSINESS RULE: Password hash cannot be empty
     if (!newPasswordHash.trim()) {
       return Result.Err(new Error('Password hash cannot be empty'));
     }
     
-    // BUSINESS RULE: Password hash cannot be the same as current
+
     if (this._passwordHash === newPasswordHash) {
       return Result.Err(new Error('New password must be different from current password'));
     }
@@ -150,7 +140,6 @@ export class User extends BaseEntity<UserData> {
     this._passwordHash = passRes.unwrap().value;
     this.markAsUpdated();
     
-    // Ensure entity is still valid after state change
     if (!this.validate()) {
       return Result.Err(new Error('Entity became invalid after state change'));
     }
@@ -184,94 +173,67 @@ export class User extends BaseEntity<UserData> {
     return Result.Ok(this);
   }
 
-  /**
-   * Check if user is admin
-   */
   isAdmin(): boolean {
     return this._role === 'admin';
   }
 
-  /**
-   * Check if user can perform admin actions
-   */
-  canPerformAdminAction(): boolean {
-    return this.isAdmin();
-  }
+  // canPerformAdminAction(): boolean {
+  //   return this.isAdmin();
+  // }
 
   /**
    * Archive user (soft delete)
    * @returns Result indicating success or failure with reason
    */
-  archive(): Result<User, Error> {
-    // BUSINESS RULE: Cannot archive admin users
-    if (this.isAdmin()) {
-      return Result.Err(new Error('Cannot archive admin users'));
-    }
-    
-    // BUSINESS RULE: Cannot archive already archived users
-    if (this.isArchived()) {
-      return Result.Err(new Error('User is already archived'));
-    }
-    
-    // Add archived status (we'll need to add this to the entity)
-    // For now, we'll use a different approach - mark as inactive
-    this.markAsUpdated();
-    
-    return Result.Ok(this);
-  }
+  // archive(): Result<User, Error> {
+  //   if (this.isAdmin()) {
+  //     return Result.Err(new Error('Cannot archive admin users'));
+  //   }
+  //   if (this.isArchived()) {
+  //     return Result.Err(new Error('User is already archived'));
+  //   }
+  //   // Placeholder archived status was not implemented; commenting unused method.
+  //   this.markAsUpdated();
+  //   return Result.Ok(this);
+  // }
 
   /**
    * Check if user is archived
    */
-  isArchived(): boolean {
-    // For now, we'll use a simple check
-    // In a real implementation, you'd have an archived field
-    return false;
-  }
+  // isArchived(): boolean {
+  //   // Placeholder; archived field not implemented.
+  //   return false;
+  // }
 
-  /**
-   * Get user's display name
-   */
-  getDisplayName(): string {
-    return this._name;
-  }
+  // getDisplayName(): string {
+  //   return this._name;
+  // }
 
-  /**
-   * Get user's initials
-   */
-  getInitials(): string {
-    const names = this._name.split(' ');
-    if (names.length >= 2) {
-      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-    }
-    return this._name.substring(0, 2).toUpperCase();
-  }
+  // getInitials(): string {
+  //   const names = this._name.split(' ');
+  //   if (names.length >= 2) {
+  //     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+  //   }
+  //   return this._name.substring(0, 2).toUpperCase();
+  // }
 
   /**
    * Check if user has a specific permission
    * @param permission - Permission to check
    */
-  hasPermission(permission: string): boolean {
-    // BUSINESS RULE: Admin users have all permissions
-    if (this.isAdmin()) {
-      return true;
-    }
-    
-    // BUSINESS RULE: Regular users have basic permissions
-    const basicPermissions = ['read_own_documents', 'upload_documents', 'edit_own_profile'];
-    return basicPermissions.includes(permission);
-  }
+  // hasPermission(permission: string): boolean {
+  //   if (this.isAdmin()) {
+  //     return true;
+  //   }
+  //   const basicPermissions = ['read_own_documents', 'upload_documents', 'edit_own_profile'];
+  //   return basicPermissions.includes(permission);
+  // }
 
-  /**
-   * Validate user data
-   */
   validate(): boolean {
     return true; 
   }
 
-  /**
-   * Convert to JSON representation
-   */
+
   toJSON(): UserData {
     return {
       id: this._id,
@@ -284,9 +246,6 @@ export class User extends BaseEntity<UserData> {
     };
   }
 
-  /**
-   * Create a clone of this user
-   */
   clone(): User {
     return new User(
       this._id,
@@ -299,9 +258,7 @@ export class User extends BaseEntity<UserData> {
     );
   }
 
-  /**
-   * Create user from data (static factory method)
-   */
+ 
   static fromData(data: UserData): User {
     return new User(
       data.id,
@@ -314,9 +271,7 @@ export class User extends BaseEntity<UserData> {
     );
   }
 
-  /**
-   * Create new user (static factory method)
-   */
+
   static create(data: CreateUserData): User {
     const now = new Date();
     return new User(

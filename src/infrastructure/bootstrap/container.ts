@@ -7,7 +7,7 @@ import { DrizzleDocumentRepository as InfraDrizzleDocumentRepository } from '../
 import { FileSystemStorageAdapter } from '../files/FileSystemStorageAdapter.js';
 import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 import { ConfigurationService } from '../config/ConfigurationService.js';
-import { IAuthService } from '../../shared/interfaces/IAuthService.js';
+import type { AuthPort } from '../../application/ports/AuthPort.js';
 import { JWTAuthService } from '../auth/JWTAuthService.js';
 import { BusinessRuleService } from '../../application/services/BusinessRuleService.js';
 
@@ -23,8 +23,7 @@ container.registerSingleton('DocumentRepositoryPort', InfraDrizzleDocumentReposi
 container.registerSingleton('FileStoragePort', FileSystemStorageAdapter);
 
 // Register auth service (infra adapter)
-container.registerSingleton<IAuthService>('IAuthService', JWTAuthService);
-container.registerSingleton('AuthPort', JWTAuthService);
+container.registerSingleton<AuthPort>('AuthPort', JWTAuthService);
 
 // Register business rule service
 container.registerSingleton<BusinessRuleService>('BusinessRuleService', BusinessRuleService);

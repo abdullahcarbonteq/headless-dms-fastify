@@ -1,28 +1,20 @@
 import { User, UserData, CreateUserData } from './User.js';
-// UserValidator removed; single-field rules enforced by Value Objects
 import { Result } from '@carbonteq/fp';
 import { EmailAddress } from '../../value-objects/EmailAddress.js';
 import { PasswordHash } from '../../value-objects/PasswordHash.js';
 import { UserName } from '../../value-objects/UserName.js';
 import { UserId } from '../../value-objects/Ids.js';
 
-/**
- * User factory - provides static factory methods for creating users
- * Implements factory pattern for user creation
- */
+
 export class UserFactory {
   private static validator = { validateCreateUserData: () => true, validateUser: () => true } as any;
 
-  /**
-   * Create a new user with validation
-   */
+
   static createUser(data: CreateUserData): Result<User, Error> {
-    // Validate role (domain invariant)
     if (data.role !== 'user' && data.role !== 'admin') {
       return Result.Err(new Error('Invalid role'));
     }
 
-    // Create value objects
     const idRes = UserId.create();
     const nameRes = UserName.create(data.name);
     const emailRes = EmailAddress.create(data.email);
@@ -32,7 +24,6 @@ export class UserFactory {
     if (emailRes.isErr()) return Result.Err(emailRes.unwrapErr());
     if (passRes.isErr()) return Result.Err(passRes.unwrapErr());
 
-    // Create user entity with normalized values
     const now = new Date();
     const user = new User(
       idRes.unwrap().value,
@@ -44,7 +35,6 @@ export class UserFactory {
       now
     );
     
-    // Validate the created user
     if (!user.validate()) {
       return Result.Err(new Error('Created user is invalid'));
     }
@@ -52,9 +42,7 @@ export class UserFactory {
     return Result.Ok(user);
   }
 
-  /**
-   * Create user from existing data (e.g., from database)
-   */
+ 
   static fromData(data: UserData): Result<User, Error> {
     // Validate the data
     if (!this.validator.validateUser({
@@ -77,9 +65,7 @@ export class UserFactory {
     return Result.Ok(user);
   }
 
-  /**
-   * Create admin user
-   */
+ 
   static createAdminUser(name: string, email: string, passwordHash: string): Result<User, Error> {
     return this.createUser({
       name,
@@ -89,9 +75,7 @@ export class UserFactory {
     });
   }
 
-  /**
-   * Create regular user
-   */
+ 
   static createRegularUser(name: string, email: string, passwordHash: string): Result<User, Error> {
     return this.createUser({
       name,
@@ -101,16 +85,12 @@ export class UserFactory {
     });
   }
 
-  /**
-   * Create user with default role (user)
-   */
+ 
   static createUserWithDefaultRole(name: string, email: string, passwordHash: string): Result<User, Error> {
     return this.createRegularUser(name, email, passwordHash);
   }
 
-  /**
-   * Create user from database row (converts database format to entity)
-   */
+
   static fromDatabaseRow(row: any): Result<User, Error> {
     try {
       const userData: UserData = {

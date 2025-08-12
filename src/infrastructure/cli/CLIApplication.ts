@@ -7,7 +7,6 @@ import { ILogger } from '../../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 import { runSeed } from '../seed/seed.js';
 
-  /** CLI application using Commander.js */
 export class CLIApplication {
   private program: Command;
   private logger: ILogger;

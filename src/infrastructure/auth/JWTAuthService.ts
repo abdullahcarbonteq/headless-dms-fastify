@@ -1,14 +1,14 @@
 import { inject, injectable } from 'tsyringe';
-import { IAuthService, JWTPayload } from '../../shared/interfaces/IAuthService.js';
+import type { AuthPort, JWTPayload } from '../../application/ports/AuthPort.js';
 import { ILogger } from '../../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 import { User } from '../../domain/entities/user/User.js';
 import { Result } from '@carbonteq/fp';
 import bcrypt from 'bcrypt';
-import jwt, { Secret, SignOptions, JwtPayload } from 'jsonwebtoken';
+import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 
 @injectable()
-export class JWTAuthService implements IAuthService {
+export class JWTAuthService implements AuthPort {
   private logger: ILogger;
   private config: IConfigurationService;
 
@@ -58,9 +58,7 @@ export class JWTAuthService implements IAuthService {
     }
   }
 
-  /**
-   * Generate a short-lived download token for a document
-   */
+ 
   async generateDownloadToken(payload: { docId: string }): Promise<Result<string, Error>> {
     try {
       const token = jwt.sign(payload, this.config.jwt.secret as Secret, { expiresIn: '5m' });

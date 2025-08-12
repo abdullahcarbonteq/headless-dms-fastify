@@ -1,6 +1,5 @@
 import { inject, injectable } from 'tsyringe';
 import type { UserRepositoryPort } from '../ports/UserRepositoryPort.js';
-import type { DocumentRepositoryPort } from '../ports/DocumentRepositoryPort.js';
 import type { ILogger } from '../../shared/interfaces/ILogger.js';
 import { Result } from '@carbonteq/fp';
 import { User } from '../../domain/entities/user/User.js';
@@ -12,7 +11,6 @@ export class BusinessRuleService {
 
   constructor(
     @inject('UserRepositoryPort') private userRepository: UserRepositoryPort,
-    @inject('DocumentRepositoryPort') private documentRepository: DocumentRepositoryPort,
     @inject('ILogger') logger: ILogger
   ) {
     this.logger = logger.child({ module: 'BusinessRuleService' });
@@ -94,6 +92,3 @@ export class BusinessRuleService {
     }
   }
 }
-
-// moved from shared/services to application/services and updated to use application ports
-

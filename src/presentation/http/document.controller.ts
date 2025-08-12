@@ -14,7 +14,7 @@ import { UpdateDocumentMetadataUseCase } from '../../application/use-cases/docum
 import { DeleteDocumentUseCase } from '../../application/use-cases/document/DeleteDocumentUseCase.js';
 import { SearchDocumentsUseCase } from '../../application/use-cases/document/SearchDocumentsUseCase.js';
 import { GenerateDownloadLinkUseCase } from '../../application/use-cases/document/GenerateDownloadLinkUseCase.js';
-import { IAuthService } from '../../shared/interfaces/IAuthService.js';
+import type { AuthPort } from '../../application/ports/AuthPort.js';
 import { ILogger } from '../../shared/interfaces/ILogger.js';
 import type { FileStoragePort } from '../../application/ports/FileStoragePort.js';
 
@@ -25,7 +25,7 @@ const updateDocumentMetadata = container.resolve(UpdateDocumentMetadataUseCase);
 const deleteDocument = container.resolve(DeleteDocumentUseCase);
 const searchDocuments = container.resolve(SearchDocumentsUseCase);
 const generateDownloadLink = container.resolve(GenerateDownloadLinkUseCase);
-const authService = container.resolve<IAuthService>('IAuthService');
+const authService = container.resolve<AuthPort>('AuthPort');
 const fileStorage = container.resolve<FileStoragePort>('FileStoragePort');
 const logger = container.resolve<ILogger>('ILogger').child({ module: 'DocumentHttpController' });
 
