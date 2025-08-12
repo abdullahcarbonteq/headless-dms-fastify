@@ -9,8 +9,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { ILogger } from '../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../shared/interfaces/IConfigurationService.js';
-import { RequestContextService } from '../shared/services/RequestContextService.js';
-import { closeDatabase, pingDatabase } from '../config/db.js';
+import { RequestContextService } from './services/RequestContextService.js';
+import { closeDatabase, pingDatabase } from '../infrastructure/persistence/db.js';
 
   /** Fastify framework bootstrapping (kept framework concerns isolated) */
 export class FastifyBootstrap {
@@ -136,9 +136,9 @@ export class FastifyBootstrap {
   async registerRoutes(): Promise<void> {
     this.logger.info('🛣️ Registering application routes...');
 
-    // Import routes dynamically
-    const { default: documentRoutes } = await import('../modules/document/document.routes.js');
-    const { default: userRoutes } = await import('../modules/user/user.routes.js');
+    // Import routes dynamically (presentation layer)
+    const { default: documentRoutes } = await import('../presentation/http/document.routes.js');
+    const { default: userRoutes } = await import('../presentation/http/user.routes.js');
 
     await this.app.register(documentRoutes, { prefix: '/api/documents' });
     await this.app.register(userRoutes, { prefix: '/api/users' });

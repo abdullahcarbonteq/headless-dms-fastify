@@ -1,4 +1,4 @@
-import { DatabaseConfig, JWTConfig, ServerConfig, AppConfig } from '../../config/schemas.js';
+import { DatabaseConfig, JWTConfig, ServerConfig, AppConfig } from '../../infrastructure/config/schemas.js';
 
 /**
  * Configuration service interface for type-safe configuration access

@@ -1,5 +1,5 @@
 import { Result } from '@carbonteq/fp';
-import { User } from '../../entities/user/User.js';
+import { User } from '../../domain/entities/user/User.js';
 
 export interface JWTPayload {
   userId: string;

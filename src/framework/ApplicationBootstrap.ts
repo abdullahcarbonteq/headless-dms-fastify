@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { container } from '../config/container.js';
+import { container } from '../infrastructure/bootstrap/container.js';
 import { ILogger } from '../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../shared/interfaces/IConfigurationService.js';
 import { FastifyBootstrap } from './FastifyBootstrap.js';

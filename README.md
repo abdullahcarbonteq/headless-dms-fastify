@@ -1,6 +1,6 @@
 # Headless DMS (Fastify + TypeScript)
 
-A Document Management System (DMS) API. Being “headless,” means it provides a clean HTTP API you can use from any frontend (React, Vue, mobile apps) or other services.
+A Document Management System (DMS) API. “Headless” means it exposes a clean HTTP API that any UI (web, mobile, CLI) can consume.
 
 ---
 
@@ -23,6 +23,10 @@ npm install
 ```
 
 2) Configure (create a `.env` file in the project root)
+   Required env vars (validated with Zod at startup):
+   - `DATABASE_URL` (PostgreSQL connection string)
+   - `JWT_SECRET` (signing secret)
+   - Optional: `JWT_EXPIRES_IN` (e.g. `24h`), `PORT` (default `3000`), `HOST` (default `0.0.0.0`), `UPLOAD_DIR` (default `./uploads`)
 
 3) Run
 ```bash
@@ -101,10 +105,11 @@ Base URL: `http://localhost:3000/api`
 - POST `/documents/upload` – upload a file (admin)
 - GET `/documents` – list with pagination (auth)
 - GET `/documents/:id` – fetch one (auth)
-- GET `/documents/search?q=...` – search (auth)
+- GET `/documents/search` – search by tags/description/userId (auth)
 - POST `/documents/:id/download-link` – generate a secure link (auth)
 - GET `/documents/download/:token` – download via secure link
 - DELETE `/documents/:id` – delete (admin)
+- PUT `/documents/:id/metadata` – update metadata (description, tags)
 
 Tip: Use Postman collections or curl; every protected route needs `Authorization: Bearer <token>`.
 
@@ -128,20 +133,27 @@ npm run cli config -- --format json
 
 ---
 
-## How it works (high level)
+## Architecture (high level)
 
-- Controllers: Handle HTTP input/output.
-- Services: Orchestrate business use cases (register, upload, search, etc.).
-- Repositories: Talk to the database (via Drizzle ORM).
-- Entities/Factories/Validators: Core domain model (User, Document) with rules, invariants, and creation helpers.
-- Middleware: Auth, validation, and request context.
-- DI Container: Wires everything together (using `tsyringe`).
-- CLI: A friendly entry point to start the server, inspect config, run migrations, etc.
+- Layered/Onion design with inward-pointing dependencies (Domain is innermost):
+
+```
+Infrastructure (Adapters: Drizzle, JWT, FS, Logging, Config) ┐
+Presentation (Fastify HTTP, Zod validators)                   ├─→ Application (Use Cases + Ports/DTOs) → Domain (Entities + Value Objects)
+                                                             ┘
+```
+
+- Presentation: Fastify routes/controllers, Zod request validation
+- Application: Use cases (e.g., RegisterUser, UploadDocument), ports (interfaces) and DTOs
+- Domain: Entities and Value Objects (VOs) enforce invariants and normalization
+- Infrastructure: Adapters implementing ports (Drizzle repositories, JWT auth, File storage), DI wiring, config. Depends inward on Application/Domain — never the other way around.
+- DI Container: `tsyringe` composition root binds ports to adapters
+- CLI: start/dev/health/config/seed helpers
 
 Why this structure?
-- It keeps business logic testable and independent from frameworks.
-- It separates “input validation” (Zod schemas) from “business rules” (validators on entities).
-- It makes future changes (like switching DB, adding features) much easier.
+- Business logic is testable and framework-agnostic.
+- Input validation (Zod) is separate from domain invariants (VOs/Entities).
+- Ports/Adapters make swapping infra (DB, auth, storage) straightforward.
 
 ---
 
@@ -168,28 +180,21 @@ Uploads are saved in `./uploads` by default. Metadata lives in PostgreSQL.
 
 ```
 src/
-├─ cli/                 # CLI entry points
-├─ config/              # Env schemas, DI container, DB
-├─ entities/            # Core domain (User, Document)
-├─ framework/           # App + Fastify bootstrap
-├─ middlewares/         # Auth and related HTTP middleware
-├─ modules/
-│  ├─ user/             # User controller/service/repo/routes
-│  └─ document/         # Document controller/service/repo/routes
-├─ shared/              # Cross-cutting helpers (logging, responses)
-└─ types/               # TS type extensions (e.g., Fastify)
+├─ domain/              # Entities, Value Objects, Factories
+├─ application/         # Use cases, Ports (interfaces), DTOs, app services
+├─ infrastructure/      # Drizzle repos, JWT, Filesystem, Logging, Config, CLI
+├─ presentation/http/   # Fastify routes, controllers, middlewares, validators
+├─ framework/           # Bootstrap (app + fastify)
+└─ tests/               # Node test suites (VOs, factories, use cases)
 ```
 
 ---
 
-## Auth in one minute
+## Value Objects and Auth (quick notes)
 
-1) Login to receive a JWT
-2) Send that token in `Authorization: Bearer <token>`
-3) The server verifies the token and injects user info into the request
-4) Admin-only routes check the user’s role
+Value Objects (VOs) like `EmailAddress`, `UserName`, `FileName`, `MimeType`, `TagList`, `Description`, and typed IDs encapsulate validation + normalization at creation time. Entities are constructed via factories that compose VOs to guarantee valid state.
 
-Passwords are hashed with bcrypt. Tokens are signed and (optionally) expire.
+Auth uses JWT; passwords are hashed with bcrypt.
 
 ---
 
@@ -220,11 +225,37 @@ RUN npm ci --only=production
 COPY dist ./dist
 COPY uploads ./uploads
 EXPOSE 3000
-CMD ["node", "dist/cli/index.js", "start"]
+CMD ["node", "dist/infrastructure/cli/index.js", "start"]
 ```
 
 Use environment variables to configure prod (same as local). Keep the app stateless; the filesystem is used for uploads by default—mount a persistent volume in production
 ---
+
+## CLI and Seeding
+
+Inspect configuration the CLI sees:
+```bash
+npm run cli:config
+```
+
+Run tests:
+```bash
+npm run test
+```
+
+Seed helpers:
+```bash
+# Non-destructive: add sample admin/users/documents
+npm run seed
+
+# Destructive: wipe users/documents, then reseed
+npm run seed:reset
+
+# Clear only (no reseed). Use the "--" to pass args to the CLI.
+npm run cli -- seed --clear-only
+```
+
+Note: `seed --reset`/`--clear-only` only affect the `users` and `documents` tables.
 
 ## FAQ
 
