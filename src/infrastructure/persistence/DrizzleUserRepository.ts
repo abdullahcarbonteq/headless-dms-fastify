@@ -3,14 +3,14 @@ import { users } from './schemas/user.schema.js';
 import type { UserRepositoryPort } from '../../application/ports/UserRepositoryPort.js';
 import { User } from '../../domain/entities/user/User.js';
 import { UserFactory } from '../../domain/entities/user/UserFactory.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { eq, sql } from 'drizzle-orm';
-import { PaginationOptions, PaginatedResult } from '../../shared/dto/pagination.dto.js';
+import type { PaginationOptions as HexPaginationOptions, Paginated as HexPaginated } from '@carbonteq/hexapp';
 import { injectable } from 'tsyringe';
 
 @injectable()
 export class DrizzleUserRepository implements UserRepositoryPort {
-  async createUser(user: User): Promise<Result<User, Error>> {
+  async createUser(user: User): Promise<AppResult<User>> {
     try {
       const [userRow] = await db.insert(users).values({
         id: user.id,
@@ -21,39 +21,39 @@ export class DrizzleUserRepository implements UserRepositoryPort {
       }).returning();
       const userResult = UserFactory.fromDatabaseRow(userRow);
       if (userResult.isErr()) {
-        return Result.Err(userResult.unwrapErr());
+        return AppResult.Err(AppError.Generic(userResult.unwrapErr().message));
       }
-      return Result.Ok(userResult.unwrap());
+      return AppResult.Ok(userResult.unwrap());
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to create user'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to create user'));
     }
   }
 
-  async findByEmail(email: string): Promise<Result<User | null, Error>> {
+  async findByEmail(email: string): Promise<AppResult<User | null>> {
     try {
       const [userRow] = await db.select().from(users).where(eq(users.email, email));
-      if (!userRow) return Result.Ok(null);
+      if (!userRow) return AppResult.Ok(null);
       const userResult = UserFactory.fromDatabaseRow(userRow);
-      if (userResult.isErr()) return Result.Err(userResult.unwrapErr());
-      return Result.Ok(userResult.unwrap());
+      if (userResult.isErr()) return AppResult.Err(AppError.Generic(userResult.unwrapErr().message));
+      return AppResult.Ok(userResult.unwrap());
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to find user by email'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to find user by email'));
     }
   }
 
-  async findById(id: string): Promise<Result<User | null, Error>> {
+  async findById(id: string): Promise<AppResult<User | null>> {
     try {
       const [userRow] = await db.select().from(users).where(eq(users.id, id));
-      if (!userRow) return Result.Ok(null);
+      if (!userRow) return AppResult.Ok(null);
       const userResult = UserFactory.fromDatabaseRow(userRow);
-      if (userResult.isErr()) return Result.Err(userResult.unwrapErr());
-      return Result.Ok(userResult.unwrap());
+      if (userResult.isErr()) return AppResult.Err(AppError.Generic(userResult.unwrapErr().message));
+      return AppResult.Ok(userResult.unwrap());
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to find user by ID'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to find user by ID'));
     }
   }
 
-  async updateUser(user: User): Promise<Result<User, Error>> {
+  async updateUser(user: User): Promise<AppResult<User>> {
     try {
       const updateData: any = {
         name: user.name,
@@ -65,29 +65,29 @@ export class DrizzleUserRepository implements UserRepositoryPort {
         .set(updateData)
         .where(eq(users.id, user.id))
         .returning();
-      if (!userRow) return Result.Err(new Error('User not found'));
+      if (!userRow) return AppResult.Err(AppError.NotFound('User not found'));
       const userResult = UserFactory.fromDatabaseRow(userRow);
-      if (userResult.isErr()) return Result.Err(userResult.unwrapErr());
-      return Result.Ok(userResult.unwrap());
+      if (userResult.isErr()) return AppResult.Err(AppError.Generic(userResult.unwrapErr().message));
+      return AppResult.Ok(userResult.unwrap());
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to update user'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to update user'));
     }
   }
 
-  async deleteUser(id: string): Promise<Result<boolean, Error>> {
+  async deleteUser(id: string): Promise<AppResult<boolean>> {
     try {
       const result = await db.delete(users).where(eq(users.id, id));
       const deleted = (result.rowCount ?? 0) > 0;
-      return Result.Ok(deleted);
+      return AppResult.Ok(deleted);
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to delete user'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to delete user'));
     }
   }
 
-  async getAllUsers(pagination?: PaginationOptions): Promise<Result<User[] | PaginatedResult<User>, Error>> {
+  async getAllUsers(pagination?: HexPaginationOptions): Promise<AppResult<User[] | HexPaginated<User>>> {
     try {
       if (pagination) {
-        const offset = (pagination.page - 1) * pagination.limit;
+        const offset = (pagination.pageNum - 1) * pagination.pageSize;
         const [{ count }] = await db
           .select({ count: sql<number>`count(*)` })
           .from(users);
@@ -95,26 +95,26 @@ export class DrizzleUserRepository implements UserRepositoryPort {
         const rows = await db
           .select()
           .from(users)
-          .limit(pagination.limit)
+          .limit(pagination.pageSize)
           .offset(offset);
         const entitiesResult = UserFactory.fromDatabaseRows(rows);
-        if (entitiesResult.isErr()) return Result.Err(entitiesResult.unwrapErr());
-        const result: PaginatedResult<User> = {
+        if (entitiesResult.isErr()) return AppResult.Err(AppError.Generic(entitiesResult.unwrapErr().message));
+        const totalPages = Math.ceil(total / pagination.pageSize);
+        const result: HexPaginated<User> = {
           data: entitiesResult.unwrap(),
-          total,
-          page: pagination.page,
-          limit: pagination.limit,
-          totalPages: Math.ceil(total / pagination.limit),
+          pageNum: pagination.pageNum,
+          pageSize: pagination.pageSize,
+          totalPages,
         };
-        return Result.Ok(result);
+        return AppResult.Ok(result);
       } else {
         const userRows = await db.select().from(users);
         const entitiesResult = UserFactory.fromDatabaseRows(userRows);
-        if (entitiesResult.isErr()) return Result.Err(entitiesResult.unwrapErr());
-        return Result.Ok(entitiesResult.unwrap());
+        if (entitiesResult.isErr()) return AppResult.Err(AppError.Generic(entitiesResult.unwrapErr().message));
+        return AppResult.Ok(entitiesResult.unwrap());
       }
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to get all users'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to get all users'));
     }
   }
 }

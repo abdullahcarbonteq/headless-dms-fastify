@@ -1,9 +1,12 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { config } from '../config/index.js';
-
 const pool = new Pool({
   connectionString: config.database.url,
+  max: config.database.pool.max,
+  min: config.database.pool.min,
+  idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
+  connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis,
 });
 
 export const db = drizzle(pool);

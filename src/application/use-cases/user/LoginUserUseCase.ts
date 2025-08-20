@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, AppErrStatus } from '@carbonteq/hexapp';
 import type { ILogger } from '../../../shared/interfaces/ILogger.js';
 import type { LoginUserInput, LoginUserOutput } from '../../dto/user/LoginUserDTO.js';
 import type { UserRepositoryPort } from '../../ports/UserRepositoryPort.js';
@@ -13,23 +13,23 @@ export class LoginUserUseCase {
     @inject('ILogger') private readonly logger: ILogger,
   ) {}
 
-  async execute(input: LoginUserInput): Promise<Result<LoginUserOutput, Error>> {
+  async execute(input: LoginUserInput): Promise<AppResult<LoginUserOutput>> {
     this.logger.info('UseCase: LoginUser - start', { email: input.email });
 
     const userRes = await this.userRepo.findByEmail(input.email);
-    if (userRes.isErr()) return Result.Err(new Error('Failed to find user'));
+    if (userRes.isErr()) return AppResult.Err(AppError.Generic('Failed to find user'));
     const user = userRes.unwrap();
-    if (!user) return Result.Err(new Error('Invalid email'));
+    if (!user) return AppResult.Err(AppError.InvalidData('Invalid email'));
 
     const cmp = await this.auth.comparePassword(input.password, user.passwordHash);
-    if (cmp.isErr()) return Result.Err(new Error('Failed to verify password'));
-    if (!cmp.unwrap()) return Result.Err(new Error('The Password you entered is incorrect'));
+    if (cmp.isErr()) return AppResult.Err(AppError.Generic('Failed to verify password'));
+    if (!cmp.unwrap()) return AppResult.Err(AppError.InvalidData('The Password you entered is incorrect'));
 
     const tokenRes = await this.auth.generateToken(user);
-    if (tokenRes.isErr()) return Result.Err(new Error('Failed to generate authentication token'));
+    if (tokenRes.isErr()) return AppResult.Err(AppError.Generic('Failed to generate authentication token'));
 
     this.logger.info('UseCase: LoginUser - success', { userId: user.id });
-    return Result.Ok({ token: tokenRes.unwrap() });
+    return AppResult.Ok({ token: tokenRes.unwrap() });
   }
 }
 

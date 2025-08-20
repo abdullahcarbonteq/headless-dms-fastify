@@ -1,11 +1,10 @@
 import { inject, injectable } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, AppErrStatus } from '@carbonteq/hexapp';
 import type { ILogger } from '../../../shared/interfaces/ILogger.js';
 import type { DocumentRepositoryPort } from '../../ports/DocumentRepositoryPort.js';
-import type { PaginationOptions } from '../../../shared/dto/pagination.dto.js';
+import { PaginationOptions as HexPaginationOptions, Paginated as HexPaginated } from '@carbonteq/hexapp';
 import type {
   SearchDocumentsInput,
-  PaginatedSearchDocumentsOutput,
   SearchDocumentsOutputItem,
 } from '../../dto/document/SearchDocumentsDTO.js';
 
@@ -16,16 +15,19 @@ export class SearchDocumentsUseCase {
     @inject('ILogger') private readonly logger: ILogger,
   ) {}
 
-  async execute(input: SearchDocumentsInput): Promise<Result<PaginatedSearchDocumentsOutput | SearchDocumentsOutputItem[], Error>> {
+  async execute(input: SearchDocumentsInput): Promise<AppResult<HexPaginated<SearchDocumentsOutputItem> | SearchDocumentsOutputItem[]>> {
     this.logger.info('UseCase: SearchDocuments - start', { input });
 
-    const pagination: PaginationOptions | undefined = input.page && input.limit
-      ? { page: input.page, limit: input.limit }
+    const pagination: HexPaginationOptions | undefined = 
+    typeof input.page === 'number' && typeof input.limit === 'number' 
+    && input.page > 0 && input.limit > 0 
+    && input.limit <= 100
+      ? HexPaginationOptions.create({ pageNum: input.page, pageSize: input.limit }).unwrap()
       : undefined;
 
     const criteria = { tags: input.tags, description: input.description, userId: input.userId };
     const res = await this.docRepo.searchDocuments(criteria, pagination);
-    if (res.isErr()) return Result.Err(new Error('Failed to search documents'));
+    if (res.isErr()) return AppResult.Err(AppError.Generic('Failed to search documents'));
 
     const val = res.unwrap();
     if (Array.isArray(val)) {
@@ -38,9 +40,10 @@ export class SearchDocumentsUseCase {
         description: d.description,
         userId: d.userId,
       }));
-      return Result.Ok(items);
+      return AppResult.Ok(items);
     } else {
-      const items: SearchDocumentsOutputItem[] = val.data.map(d => ({
+      const p = val as HexPaginated<any>;
+      const items: SearchDocumentsOutputItem[] = p.data.map(d => ({
         id: d.id,
         filename: d.filename,
         mimetype: d.mimetype,
@@ -49,7 +52,7 @@ export class SearchDocumentsUseCase {
         description: d.description,
         userId: d.userId,
       }));
-      return Result.Ok({ data: items, total: val.total, page: val.page, limit: val.limit, totalPages: val.totalPages });
+      return AppResult.Ok({ data: items, pageNum: p.pageNum, pageSize: p.pageSize, totalPages: p.totalPages });
     }
   }
 }

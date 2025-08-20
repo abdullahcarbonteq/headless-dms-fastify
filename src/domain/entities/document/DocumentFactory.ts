@@ -1,7 +1,7 @@
 import { Document, DocumentStatus } from './Document.js';
 import { FileName } from '../../value-objects/FileName.js';
 import { PathVO } from '../../value-objects/PathVO.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, UUID, DateTime } from '@carbonteq/hexapp';
 import { DocumentId, UserId } from '../../value-objects/Ids.js';
 import { MimeType } from '../../value-objects/MimeType.js';
 import { TagList } from '../../value-objects/TagList.js';
@@ -20,7 +20,7 @@ export class DocumentFactory {
   /**
    * Create a new document entity
    */
-  static createDocument(data: CreateDocumentData): Result<Document, Error> {
+  static createDocument(data: CreateDocumentData): AppResult<Document> {
     try {
       // Validate and normalize via VOs
       const nameRes = FileName.create(data.filename);
@@ -29,20 +29,20 @@ export class DocumentFactory {
       const tagRes = TagList.create(data.tags);
       const descRes = Description.create(data.description ?? null);
       const userIdRes = UserId.create(data.userId);
-      if (nameRes.isErr()) return Result.Err(nameRes.unwrapErr());
-      if (pathRes.isErr()) return Result.Err(pathRes.unwrapErr());
-      if (mimeRes.isErr()) return Result.Err(mimeRes.unwrapErr());
-      if (tagRes.isErr()) return Result.Err(tagRes.unwrapErr());
-      if (descRes.isErr()) return Result.Err(descRes.unwrapErr());
-      if (userIdRes.isErr()) return Result.Err(userIdRes.unwrapErr());
+      if (nameRes.isErr()) return AppResult.Err(AppError.Generic(nameRes.unwrapErr().message));
+      if (pathRes.isErr()) return AppResult.Err(AppError.Generic(pathRes.unwrapErr().message));
+      if (mimeRes.isErr()) return AppResult.Err(AppError.Generic(mimeRes.unwrapErr().message));
+      if (tagRes.isErr()) return AppResult.Err(AppError.Generic(tagRes.unwrapErr().message));
+      if (descRes.isErr()) return AppResult.Err(AppError.Generic(descRes.unwrapErr().message));
+      if (userIdRes.isErr()) return AppResult.Err(AppError.Generic(userIdRes.unwrapErr().message));
 
       // Generate id once
       const idRes = DocumentId.create();
-      if (idRes.isErr()) return Result.Err(idRes.unwrapErr());
+      if (idRes.isErr()) return AppResult.Err(AppError.Generic(idRes.unwrapErr().message));
 
       // Create document entity with normalized values
       const document = new Document(
-        idRes.unwrap().value,
+        UUID.fromTrusted(idRes.unwrap().value),
         nameRes.unwrap().value,
         mimeRes.unwrap().value,
         pathRes.unwrap().value,
@@ -54,12 +54,12 @@ export class DocumentFactory {
 
       // Validate the created entity
       if (!document.validate()) {
-        return Result.Err(new Error('Created document is invalid'));
+        return AppResult.Err(AppError.Generic('Created document is invalid'));
       }
 
-      return Result.Ok(document);
+      return AppResult.Ok(document);
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to create document'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to create document'));
     }
   }
 
@@ -77,16 +77,16 @@ export class DocumentFactory {
     status: string;
     createdAt?: Date;
     updatedAt?: Date;
-  }): Result<Document, Error> {
+  }): AppResult<Document> {
     try {
       // Validate status
       if (!Object.values(DocumentStatus).includes(data.status as DocumentStatus)) {
-        return Result.Err(new Error('Invalid document status'));
+        return AppResult.Err(AppError.Generic('Invalid document status'));
       }
 
-      // Create document entity
+      // Create document entity with hexapp types
       const document = new Document(
-        data.id,
+        UUID.fromTrusted(data.id),
         data.filename,
         data.mimetype,
         data.path,
@@ -94,35 +94,35 @@ export class DocumentFactory {
         data.description,
         data.userId,
         data.status as DocumentStatus,
-        data.createdAt,
-        data.updatedAt
+        data.createdAt ? DateTime.from(data.createdAt) : undefined,
+        data.updatedAt ? DateTime.from(data.updatedAt) : undefined
       );
 
       // Validate the created entity
       if (!document.validate()) {
-        return Result.Err(new Error('Document data is invalid'));
+        return AppResult.Err(AppError.Generic('Created document is invalid'));
       }
 
-      return Result.Ok(document);
+      return AppResult.Ok(document);
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to create document from data'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to create document'));
     }
   }
 
   /**
    * Create a document entity from database row
    */
-  static fromDatabaseRow(row: any): Result<Document, Error> {
+  static fromDatabaseRow(row: any): AppResult<Document> {
     try {
       // Validate required fields
       if (!row.id || !row.filename || !row.mimetype || !row.path) {
-        return Result.Err(new Error('Missing required document fields'));
+        return AppResult.Err(AppError.Generic('Missing required document fields'));
       }
 
       // Get userId from either property name or column name
       const userId = row.userId || row.user_id;
       if (!userId) {
-        return Result.Err(new Error('Missing userId in document data'));
+        return AppResult.Err(AppError.Generic('Missing userId in document data'));
       }
 
       // Parse tags from JSON string if needed
@@ -135,9 +135,9 @@ export class DocumentFactory {
         }
       }
 
-      // Create document entity
+      // Create document entity with hexapp types
       const document = new Document(
-        row.id,
+        UUID.fromTrusted(row.id),
         row.filename,
         row.mimetype,
         row.path,
@@ -145,18 +145,18 @@ export class DocumentFactory {
         row.description || null,
         userId,
         row.status || DocumentStatus.ACTIVE,
-        row.createdAt ? new Date(row.createdAt) : row.created_at ? new Date(row.created_at) : undefined,
-        row.updatedAt ? new Date(row.updatedAt) : row.updated_at ? new Date(row.updated_at) : undefined
+        row.createdAt ? DateTime.from(new Date(row.createdAt)) : row.created_at ? DateTime.from(new Date(row.created_at)) : undefined,
+        row.updatedAt ? DateTime.from(new Date(row.updatedAt)) : row.updated_at ? DateTime.from(new Date(row.updated_at)) : undefined
       );
 
       // Validate the created entity
       if (!document.validate()) {
-        return Result.Err(new Error('Invalid document data from database'));
+        return AppResult.Err(AppError.Generic('Invalid document data from database'));
       }
 
-      return Result.Ok(document);
+      return AppResult.Ok(document);
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to create document from database row'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to create document from database row'));
     }
   }
 
@@ -185,17 +185,17 @@ export class DocumentFactory {
   /**
    * Create multiple document entities from database rows
    */
-  static fromDatabaseRows(rows: any[]): Result<Document[], Error> {
+  static fromDatabaseRows(rows: any[]): AppResult<Document[]> {
     const documents: Document[] = [];
 
     for (const row of rows) {
       const documentResult = this.fromDatabaseRow(row);
       if (documentResult.isErr()) {
-        return Result.Err(documentResult.unwrapErr());
+        return AppResult.Err(AppError.Generic(documentResult.unwrapErr().message));
       }
       documents.push(documentResult.unwrap());
     }
 
-    return Result.Ok(documents);
+    return AppResult.Ok(documents);
   }
 } 

@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import fs from 'fs';
 import path from 'path';
 import { FileStoragePort, SavedFileInfo } from '../../application/ports/FileStoragePort.js';
@@ -13,7 +13,7 @@ export class FileSystemStorageAdapter implements FileStoragePort {
     this.uploadDir = this.config.app.upload.uploadDir;
   }
 
-  async save(fileStream: NodeJS.ReadableStream, originalFilename: string, mimetype: string): Promise<Result<SavedFileInfo, Error>> {
+  async save(fileStream: NodeJS.ReadableStream, originalFilename: string, mimetype: string): Promise<AppResult<SavedFileInfo>> {
     try {
       await fs.promises.mkdir(this.uploadDir, { recursive: true });
       const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(originalFilename)}`;
@@ -27,18 +27,18 @@ export class FileSystemStorageAdapter implements FileStoragePort {
       });
       const stats = await fs.promises.stat(dest);
       const info: SavedFileInfo = { path: dest, filename: originalFilename, mimetype, size: stats.size };
-      return Result.Ok(info);
+      return AppResult.Ok(info);
     } catch (err) {
-      return Result.Err(err instanceof Error ? err : new Error('Failed to save file'));
+      return AppResult.Err(AppError.Generic(err instanceof Error ? err.message : 'Failed to save file'));
     }
   }
 
-  async remove(filePath: string): Promise<Result<boolean, Error>> {
+  async remove(filePath: string): Promise<AppResult<boolean>> {
     try {
       await fs.promises.unlink(filePath);
-      return Result.Ok(true);
+      return AppResult.Ok(true);
     } catch (err) {
-      return Result.Err(err instanceof Error ? err : new Error('Failed to remove file'));
+      return AppResult.Err(AppError.Generic(err instanceof Error ? err.message : 'Failed to remove file'));
     }
   }
 }

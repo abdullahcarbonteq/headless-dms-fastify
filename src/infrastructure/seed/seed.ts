@@ -1,9 +1,7 @@
 import { container } from '../bootstrap/container.js';
-import { Result } from '@carbonteq/fp';
 import { db } from '../persistence/db.js';
 import { users } from '../persistence/schemas/user.schema.js';
 import { documents } from '../persistence/schemas/document.schema.js';
-import { eq, sql } from 'drizzle-orm';
 import type { UserRepositoryPort } from '../../application/ports/UserRepositoryPort.js';
 import type { DocumentRepositoryPort } from '../../application/ports/DocumentRepositoryPort.js';
 import type { AuthPort } from '../../application/ports/AuthPort.js';
@@ -56,7 +54,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<void> {
   }
 
   // Load all users to attach documents
-  const allUsersRes = await userRepo.getAllUsers({ page: 1, limit: 1000 });
+  const allUsersRes = await userRepo.getAllUsers();
   if (allUsersRes.isErr()) throw allUsersRes.unwrapErr();
   const allUsersOrPage = allUsersRes.unwrap();
   const allUsers = Array.isArray(allUsersOrPage) ? allUsersOrPage : allUsersOrPage.data;

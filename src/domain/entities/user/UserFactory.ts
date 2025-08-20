@@ -1,5 +1,5 @@
 import { User, UserData, CreateUserData } from './User.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { EmailAddress } from '../../value-objects/EmailAddress.js';
 import { PasswordHash } from '../../value-objects/PasswordHash.js';
 import { UserName } from '../../value-objects/UserName.js';
@@ -10,19 +10,19 @@ export class UserFactory {
   private static validator = { validateCreateUserData: () => true, validateUser: () => true } as any;
 
 
-  static createUser(data: CreateUserData): Result<User, Error> {
+  static createUser(data: CreateUserData): AppResult<User> {
     if (data.role !== 'user' && data.role !== 'admin') {
-      return Result.Err(new Error('Invalid role'));
+      return AppResult.Err(AppError.Generic('Invalid role'));
     }
 
     const idRes = UserId.create();
     const nameRes = UserName.create(data.name);
     const emailRes = EmailAddress.create(data.email);
     const passRes = PasswordHash.create(data.passwordHash);
-    if (idRes.isErr()) return Result.Err(idRes.unwrapErr());
-    if (nameRes.isErr()) return Result.Err(nameRes.unwrapErr());
-    if (emailRes.isErr()) return Result.Err(emailRes.unwrapErr());
-    if (passRes.isErr()) return Result.Err(passRes.unwrapErr());
+    if (idRes.isErr()) return AppResult.Err(AppError.Generic(idRes.unwrapErr().message));
+    if (nameRes.isErr()) return AppResult.Err(AppError.Generic(nameRes.unwrapErr().message));
+    if (emailRes.isErr()) return AppResult.Err(AppError.Generic(emailRes.unwrapErr().message));
+    if (passRes.isErr()) return AppResult.Err(AppError.Generic(passRes.unwrapErr().message));
 
     const now = new Date();
     const user = new User(
@@ -36,14 +36,14 @@ export class UserFactory {
     );
     
     if (!user.validate()) {
-      return Result.Err(new Error('Created user is invalid'));
+      return AppResult.Err(AppError.Generic('Created user is invalid'));
     }
 
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
  
-  static fromData(data: UserData): Result<User, Error> {
+  static fromData(data: UserData): AppResult<User> {
     // Validate the data
     if (!this.validator.validateUser({
       name: data.name,
@@ -51,7 +51,7 @@ export class UserFactory {
       passwordHash: data.passwordHash,
       role: data.role,
     } as any)) {
-      return Result.Err(new Error('Invalid user data'));
+      return AppResult.Err(AppError.Generic('Invalid user data'));
     }
 
     // Create user from data
@@ -59,14 +59,14 @@ export class UserFactory {
     
     // Validate the created user
     if (!user.validate()) {
-      return Result.Err(new Error('User data is invalid'));
+      return AppResult.Err(AppError.Generic('User data is invalid'));
     }
 
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
  
-  static createAdminUser(name: string, email: string, passwordHash: string): Result<User, Error> {
+  static createAdminUser(name: string, email: string, passwordHash: string): AppResult<User> {
     return this.createUser({
       name,
       email,
@@ -76,7 +76,7 @@ export class UserFactory {
   }
 
  
-  static createRegularUser(name: string, email: string, passwordHash: string): Result<User, Error> {
+  static createRegularUser(name: string, email: string, passwordHash: string): AppResult<User> {
     return this.createUser({
       name,
       email,
@@ -86,12 +86,12 @@ export class UserFactory {
   }
 
  
-  static createUserWithDefaultRole(name: string, email: string, passwordHash: string): Result<User, Error> {
+  static createUserWithDefaultRole(name: string, email: string, passwordHash: string): AppResult<User> {
     return this.createRegularUser(name, email, passwordHash);
   }
 
 
-  static fromDatabaseRow(row: any): Result<User, Error> {
+  static fromDatabaseRow(row: any): AppResult<User> {
     try {
       const userData: UserData = {
         id: row.id,
@@ -105,24 +105,24 @@ export class UserFactory {
 
       return this.fromData(userData);
     } catch (error) {
-      return Result.Err(new Error(`Failed to create user from database row: ${error}`));
+      return AppResult.Err(AppError.Generic(`Failed to create user from database row: ${error}`));
     }
   }
 
   /**
    * Create multiple users from database rows
    */
-  static fromDatabaseRows(rows: any[]): Result<User[], Error> {
+  static fromDatabaseRows(rows: any[]): AppResult<User[]> {
     const users: User[] = [];
     
     for (const row of rows) {
       const userResult = this.fromDatabaseRow(row);
       if (userResult.isErr()) {
-        return Result.Err(userResult.unwrapErr());
+        return AppResult.Err(AppError.Generic(userResult.unwrapErr().message));
       }
       users.push(userResult.unwrap());
     }
 
-    return Result.Ok(users);
+    return AppResult.Ok(users);
   }
 } 

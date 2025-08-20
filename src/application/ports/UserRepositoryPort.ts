@@ -1,14 +1,13 @@
-import { Result } from '@carbonteq/fp';
 import { User } from '../../domain/entities/user/User.js';
-import type { PaginationOptions, PaginatedResult } from '../../shared/dto/pagination.dto.js';
+import type { PaginationOptions as HexPaginationOptions, Paginated as HexPaginated, AppResult } from '@carbonteq/hexapp';
 
 export interface UserRepositoryPort {
-  createUser(user: User): Promise<Result<User, Error>>;
-  findByEmail(email: string): Promise<Result<User | null, Error>>;
-  findById(id: string): Promise<Result<User | null, Error>>;
-  updateUser(user: User): Promise<Result<User, Error>>;
-  deleteUser(id: string): Promise<Result<boolean, Error>>;
-  getAllUsers(pagination?: PaginationOptions): Promise<Result<User[] | PaginatedResult<User>, Error>>;
+  createUser(user: User): Promise<AppResult<User>>;
+  findByEmail(email: string): Promise<AppResult<User | null>>;
+  findById(id: string): Promise<AppResult<User | null>>;
+  updateUser(user: User): Promise<AppResult<User>>;
+  deleteUser(id: string): Promise<AppResult<boolean>>;
+  getAllUsers(pagination?: HexPaginationOptions): Promise<AppResult<User[] | HexPaginated<User>>>;
 }
 
 export type { User };

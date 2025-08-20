@@ -64,6 +64,10 @@ declare global {
       MAX_FILES?: string;
       CORS_ORIGIN?: string;
       CORS_CREDENTIALS?: string;
+      PGPOOL_MAX?: string;
+      PGPOOL_MIN?: string;
+      PG_IDLE_TIMEOUT_MS?: string;
+      PG_CONN_TIMEOUT_MS?: string;
     }
   }
 }

@@ -1,13 +1,10 @@
 import { FastifyReply } from 'fastify';
-import { Result } from '@carbonteq/fp';
+import { Paginated as HexPaginated, AppResult, AppError, AppErrStatus } from '@carbonteq/hexapp';
 
 export interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
+  pageNum: number;
+  pageSize: number;
   totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -21,16 +18,41 @@ export interface ApiResponse<T> {
 
 export class ResponseHandler {
   /**
-   * Handle Railway Result pattern for successful responses
+   * Map AppErrStatus to HTTP status codes
+   */
+  private static mapAppErrorStatusToHttpStatus(status: AppErrStatus): number {
+    switch (status) {
+      case AppErrStatus.NotFound:
+        return 404;
+      case AppErrStatus.Unauthorized:
+        return 401;
+      case AppErrStatus.InvalidData:
+        return 400;
+      case AppErrStatus.InvalidOperation:
+        return 400;
+      case AppErrStatus.AlreadyExists:
+        return 409;
+      case AppErrStatus.GuardViolation:
+        return 403;
+      case AppErrStatus.Generic:
+      default:
+        return 500;
+    }
+  }
+
+  /**
+   * Handle AppResult pattern for successful responses
    */
   static success<T>(
     reply: FastifyReply,
-    result: Result<T, Error>,
+    result: AppResult<T>,
     statusCode: number = 200,
     message?: string
   ): FastifyReply {
     if (result.isErr()) {
-      return this.error(reply, result.unwrapErr(), 500);
+      const error = result.unwrapErr();
+      const httpStatus = this.mapAppErrorStatusToHttpStatus(error.status);
+      return this.error(reply, error, httpStatus);
     }
 
     const data = result.unwrap();
@@ -44,17 +66,29 @@ export class ResponseHandler {
   }
 
   /**
-   * Handle Railway Result pattern for error responses
+   * Handle AppResult pattern for error responses
    */
   static error(
     reply: FastifyReply,
-    error: Error,
+    error: Error | AppError,
     statusCode: number = 500,
     details?: unknown
   ): FastifyReply {
+    // Handle AppError specially
+    if (error instanceof AppError) {
+      const httpStatus = this.mapAppErrorStatusToHttpStatus(error.status);
+      const response: ApiResponse<never> = {
+        success: false,
+        error: error.message,
+        ...(details ? { errors: details } : {})
+      };
+      return reply.status(httpStatus).send(response);
+    }
+
+    // Handle regular Error
     const response: ApiResponse<never> = {
       success: false,
-      error: error.message,
+      error: error?.message || 'Unknown error occurred',
       ...(details ? { errors: details } : {})
     };
 
@@ -62,73 +96,71 @@ export class ResponseHandler {
   }
 
   /**
-   * Handle Railway Result pattern for optional data (404 handling)
+   * Handle AppResult pattern for optional data (404 handling)
    */
   static optional<T>(
     reply: FastifyReply,
-    result: Result<T | null, Error>,
+    result: AppResult<T | null>,
     notFoundMessage: string = 'Resource not found'
   ): FastifyReply {
     if (result.isErr()) {
-      return this.error(reply, result.unwrapErr(), 500);
+      const error = result.unwrapErr();
+      const httpStatus = this.mapAppErrorStatusToHttpStatus(error.status);
+      return this.error(reply, error, httpStatus);
     }
 
     const data = result.unwrap();
     if (!data) {
-      return this.error(reply, new Error(notFoundMessage), 404);
+      return this.error(reply, AppError.NotFound(notFoundMessage), 404);
     }
 
-    return this.success(reply, Result.Ok(data), 200);
+    return this.success(reply, AppResult.Ok(data), 200);
   }
 
   /**
-   * Handle Railway Result pattern for boolean operations (delete, update)
+   * Handle AppResult pattern for boolean operations (delete, update)
    */
   static boolean(
     reply: FastifyReply,
-    result: Result<boolean, Error>,
+    result: AppResult<boolean>,
     successMessage: string = 'Operation completed successfully',
     notFoundMessage: string = 'Resource not found'
   ): FastifyReply {
     if (result.isErr()) {
-      return this.error(reply, result.unwrapErr(), 500);
+      const error = result.unwrapErr();
+      const httpStatus = this.mapAppErrorStatusToHttpStatus(error.status);
+      return this.error(reply, error, httpStatus);
     }
 
     const success = result.unwrap();
     if (!success) {
-      return this.error(reply, new Error(notFoundMessage), 404);
+      return this.error(reply, AppError.NotFound(notFoundMessage), 404);
     }
 
-    return this.success(reply, Result.Ok(success), 200, successMessage);
+    return this.success(reply, AppResult.Ok(success), 200, successMessage);
   }
 
   /**
-   * Handle Railway Result pattern for paginated responses
+   * Handle AppResult pattern for paginated responses
    */
   static paginated<T>(
     reply: FastifyReply,
-    result: Result<T[] | { data: T[]; page: number; limit: number; total: number; totalPages: number }, Error>
+    result: AppResult<T[] | HexPaginated<T>>
   ): FastifyReply {
     if (result.isErr()) {
-      return this.error(reply, result.unwrapErr(), 500);
+      const error = result.unwrapErr();
+      const httpStatus = this.mapAppErrorStatusToHttpStatus(error.status);
+      return this.error(reply, error, httpStatus);
     }
 
     const data = result.unwrap();
     
-    // Always return a paginated shape for list endpoints
+    // Handle array data (no pagination) - return early to prevent crash
     if (Array.isArray(data)) {
-      const page = 1;
-      const limit = data.length;
-      const total = data.length;
-      const totalPages = 1;
-
       const pagination: PaginationInfo = {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: false,
-        hasPrev: false,
+        pageNum: 1,
+        pageSize: data.length,
+        totalPages: 1,
       };
 
       const response: ApiResponse<T[]> = {
@@ -140,18 +172,34 @@ export class ResponseHandler {
       return reply.status(200).send(response);
     }
 
+    // Handle Hexapp Paginated type - add safety checks
+    if (data && typeof data === 'object' && 'data' in data && 'pageNum' in data) {
+      const pagination: PaginationInfo = {
+        pageNum: data.pageNum,
+        pageSize: data.pageSize,
+        totalPages: data.totalPages,
+      };
+
+      const response: ApiResponse<T[]> = {
+        success: true,
+        data: data.data,
+        pagination,
+      };
+
+      return reply.status(200).send(response);
+    }
+
+    // Fallback: treat as array to prevent crashes
+    const fallbackData = Array.isArray(data) ? data : [data];
     const pagination: PaginationInfo = {
-      page: data.page,
-      limit: data.limit,
-      total: data.total,
-      totalPages: data.totalPages,
-      hasNext: data.page < data.totalPages,
-      hasPrev: data.page > 1,
+      pageNum: 1,
+      pageSize: fallbackData.length,
+      totalPages: 1,
     };
 
     const response: ApiResponse<T[]> = {
       success: true,
-      data: data.data,
+      data: fallbackData,
       pagination,
     };
 
@@ -159,21 +207,22 @@ export class ResponseHandler {
   }
 
   /**
-   * Handle Railway Result pattern for file upload responses
+   * Handle AppResult pattern for file upload responses
    */
   static upload<T>(
     reply: FastifyReply,
-    result: Result<T, Error>
+    result: AppResult<T>
   ): FastifyReply {
     if (result.isErr()) {
-      return this.error(reply, result.unwrapErr(), 400);
+      const error = result.unwrapErr();
+      const httpStatus = this.mapAppErrorStatusToHttpStatus(error.status);
+      return this.error(reply, error, httpStatus);
     }
 
     const data = result.unwrap();
     const response: ApiResponse<T> = {
       success: true,
       data,
-      message: 'File uploaded successfully'
     };
 
     return reply.status(201).send(response);

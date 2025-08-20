@@ -121,7 +121,8 @@ export class FastifyBootstrap {
     });
 
     await this.app.register(fastifyStatic, {
-      root: join(dirname(fileURLToPath(import.meta.url)), '..', '..', this.config.app.upload.uploadDir),
+      // Serve files from project root's upload directory to align with FileSystemStorageAdapter
+      root: join(process.cwd(), this.config.app.upload.uploadDir),
       prefix: '/uploads/',
       decorateReply: false,
       cacheControl: true,

@@ -8,6 +8,12 @@ function loadConfig(): Config {
   const rawConfig = {
     database: {
       url: process.env.DATABASE_URL,
+      pool: {
+        max: process.env.PGPOOL_MAX,
+        min: process.env.PGPOOL_MIN,
+        idleTimeoutMillis: process.env.PG_IDLE_TIMEOUT_MS,
+        connectionTimeoutMillis: process.env.PG_CONN_TIMEOUT_MS,
+      },
     },
     jwt: {
       secret: process.env.JWT_SECRET,

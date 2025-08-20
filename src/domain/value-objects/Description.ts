@@ -1,16 +1,20 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, BaseValueObject } from '@carbonteq/hexapp';
 
-export class Description {
+export class Description extends BaseValueObject<string | null> {
   public readonly value: string | null;
-  private constructor(value: string | null) { this.value = value; }
+  private constructor(value: string | null) { 
+    super();
+    this.value = value; 
+  }
 
-  static create(raw?: string | null): Result<Description, Error> {
-    if (raw == null) return Result.Ok(new Description(null));
-    const text = String(raw);
-    if (text.length > 1000) {
-      return Result.Err(new Error('Description too long'));
-    }
-    return Result.Ok(new Description(text));
+  static create(raw: string | null): AppResult<Description> {
+    if (raw == null) return AppResult.Ok(new Description(null));
+    if (raw.length > 1000) return AppResult.Err(AppError.Generic('Description too long'));
+    return AppResult.Ok(new Description(raw));
+  }
+
+  serialize(): string | null {
+    return this.value;
   }
 }
 

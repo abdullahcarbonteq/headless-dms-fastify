@@ -1,6 +1,6 @@
 # Headless DMS (Fastify + TypeScript)
 
-A Document Management System (DMS) API. “Headless” means it exposes a clean HTTP API that any UI (web, mobile, CLI) can consume.
+A Document Management System (DMS) API. "Headless" means it exposes a clean HTTP API that any UI (web, mobile, CLI) can consume.
 
 ---
 
@@ -12,6 +12,10 @@ A Document Management System (DMS) API. “Headless” means it exposes a clean 
 - Register and log in users
 - Protect routes with JWT auth
 - Enforce roles (admin vs user)
+- **NEW**: Robust validation with safe wrapper for all endpoints
+- **NEW**: Consistent error handling using AppResult pattern
+- **NEW**: Zod validation for upload fields (tags, description) on multipart uploads
+- **NEW**: Connection pooling for PostgreSQL and database indexes for better search performance
 
 ---
 
@@ -27,6 +31,11 @@ npm install
    - `DATABASE_URL` (PostgreSQL connection string)
    - `JWT_SECRET` (signing secret)
    - Optional: `JWT_EXPIRES_IN` (e.g. `24h`), `PORT` (default `3000`), `HOST` (default `0.0.0.0`), `UPLOAD_DIR` (default `./uploads`)
+   - Optional DB pool tuning (defaults provided):
+     - `PGPOOL_MAX` (default `10`)
+     - `PGPOOL_MIN` (default `0`)
+     - `PG_IDLE_TIMEOUT_MS` (default `30000`)
+     - `PG_CONN_TIMEOUT_MS` (default `2000`)
 
 3) Run
 ```bash
@@ -76,16 +85,19 @@ GET /api/documents?page=1&limit=10
 Authorization: Bearer <token>
 ```
 
-4) Upload a document (admin only)
+4) Upload a document
 ```http
 POST /api/documents/upload
-Authorization: Bearer <admin-token>
+Authorization: Bearer <token>
 Content-Type: multipart/form-data
 
 file: <file>
-description: "Quarterly report"
-tags: "[\"q1\", \"finance\"]"
+filename: "example.txt"          # optional; auto-detected if omitted
+mimetype: "text/plain"           # optional; auto-detected if omitted
+description: "Quarterly report"  # optional, max 1000 chars
+tags: "[\"q1\", \"finance\"]"  # stringified JSON array or comma-separated
 ```
+Note: Files are served from `/uploads/<saved-filename>`. Download links are short-lived and validated by JWT.
 
 ---
 
@@ -97,12 +109,11 @@ Base URL: `http://localhost:3000/api`
 - POST `/users/register` – create a user
 - POST `/users/login` – get a JWT
 - GET `/users/all` – list all users (admin)
-- GET `/users/:id` – get a user by id (auth)
 - PUT `/users/:id` – update user (admin)
 - DELETE `/users/:id` – delete user (admin)
 
 ### Documents
-- POST `/documents/upload` – upload a file (admin)
+- POST `/documents/upload` – upload a file (auth)
 - GET `/documents` – list with pagination (auth)
 - GET `/documents/:id` – fetch one (auth)
 - GET `/documents/search` – search by tags/description/userId (auth)
@@ -124,7 +135,8 @@ This app reads config from environment variables and validates them at startup. 
 - `JWT_EXPIRES_IN`: token lifetime (default `24h`)
 - `PORT`/`HOST`: server binding (default `3000`/`0.0.0.0`)
 - `UPLOAD_DIR`: where files land on disk (default `./uploads`)
-- `UPLOAD_MAX_FILE_SIZE`: bytes (default `10485760` = 10MB)
+- `MAX_FILE_SIZE`/`MAX_FILES`: upload limits (defaults `10MB` / `10`)
+- `PGPOOL_MAX`, `PGPOOL_MIN`, `PG_IDLE_TIMEOUT_MS`, `PG_CONN_TIMEOUT_MS`: DB pool tuning
 
 You can inspect the effective config via:
 ```bash
@@ -133,27 +145,30 @@ npm run cli config -- --format json
 
 ---
 
-## Architecture (high level)
+## Testing endpoints quickly
 
-- Layered/Onion design with inward-pointing dependencies (Domain is innermost):
+A convenience script logs in as the seeded admin, registers a user, lists and searches documents, uploads a file, updates metadata, and fetches a download link.
 
+```bash
+# Ensure server is running and DB seeded (admin@example.com / Admin@123)
+npm run dev
+npm run seed
+
+# Then run the script
+bash ./test-endpoints.sh
 ```
-Infrastructure (Adapters: Drizzle, JWT, FS, Logging, Config) ┐
-Presentation (Fastify HTTP, Zod validators)                   ├─→ Application (Use Cases + Ports/DTOs) → Domain (Entities + Value Objects)
-                                                             ┘
+
+Requires `jq` to be installed. Set `BASE_URL` to override the default:
+
+```bash
+BASE_URL=http://localhost:3000 bash ./test-endpoints.sh
 ```
 
-- Presentation: Fastify routes/controllers, Zod request validation
-- Application: Use cases (e.g., RegisterUser, UploadDocument), ports (interfaces) and DTOs
-- Domain: Entities and Value Objects (VOs) enforce invariants and normalization
-- Infrastructure: Adapters implementing ports (Drizzle repositories, JWT auth, File storage), DI wiring, config. Depends inward on Application/Domain — never the other way around.
-- DI Container: `tsyringe` composition root binds ports to adapters
-- CLI: start/dev/health/config/seed helpers
+---
 
-Why this structure?
-- Business logic is testable and framework-agnostic.
-- Input validation (Zod) is separate from domain invariants (VOs/Entities).
-- Ports/Adapters make swapping infra (DB, auth, storage) straightforward.
+## Notes on static files
+
+Files are saved to `UPLOAD_DIR` (default `./uploads`) and served via Fastify static at `/uploads/`. The server now serves from the project root upload directory, ensuring generated download links resolve correctly.
 
 ---
 
@@ -170,6 +185,14 @@ npm run build && npm start
 npm run cli start -- --port 3000
 npm run cli health -- --url http://localhost:3000
 npm run cli migrate -- --up
+
+# Run tests
+npm run test:domain
+npm run test:application
+npm run test:infrastructure
+npm run test:presentation
+npm run test:integration
+npm run test:e2e
 ```
 
 Uploads are saved in `./uploads` by default. Metadata lives in PostgreSQL.
@@ -180,13 +203,19 @@ Uploads are saved in `./uploads` by default. Metadata lives in PostgreSQL.
 
 ```
 src/
-├─ domain/              # Entities, Value Objects, Factories
-├─ application/         # Use cases, Ports (interfaces), DTOs, app services
-├─ infrastructure/      # Drizzle repos, JWT, Filesystem, Logging, Config, CLI
-├─ presentation/http/   # Fastify routes, controllers, middlewares, validators
+├─ domain/              # Entities, Value Objects, Factories (using AppResult<T>)
+├─ application/         # Use cases, Ports (interfaces), DTOs, app services (using AppResult<T>)
+├─ infrastructure/      # Drizzle repos, JWT, Filesystem, Logging, Config, CLI (using AppResult<T>)
+├─ presentation/http/   # Fastify routes, controllers, middlewares, validators (with safe wrapper)
 ├─ framework/           # Bootstrap (app + fastify)
-└─ tests/               # Node test suites (VOs, factories, use cases)
+└─ tests/               # Test suites (currently using Result<T, Error> for mocks)
 ```
+
+**Architecture Highlights**:
+- **Hexagonal Architecture**: Clean separation between domain, application, and infrastructure layers
+- **AppResult Pattern**: Consistent error handling using `@carbonteq/hexapp` throughout the stack
+- **Safe Validation**: Robust input validation with graceful fallback for edge cases
+- **Railway Programming**: Functional error handling patterns for better flow control
 
 ---
 
@@ -194,16 +223,19 @@ src/
 
 Value Objects (VOs) like `EmailAddress`, `UserName`, `FileName`, `MimeType`, `TagList`, `Description`, and typed IDs encapsulate validation + normalization at creation time. Entities are constructed via factories that compose VOs to guarantee valid state.
 
+**NEW**: All VOs now return `AppResult<T>` for better error handling and type safety.
+
 Auth uses JWT; passwords are hashed with bcrypt.
 
 ---
 
 ## Troubleshooting
 
-- “I can’t hit the API” → Ensure the server says it’s listening on `PORT` and you’re calling `/api/...`.
-- “Unauthorized” → Missing or wrong `Authorization` header. Re-login, then retry.
-- “Upload fails” → Check file size vs `UPLOAD_MAX_FILE_SIZE`; verify `UPLOAD_DIR` permissions exist.
-- “Port already in use” → Stop other processes using `3000` or change `PORT`.
+- "I can't hit the API" → Ensure the server says it's listening on `PORT` and you're calling `/api/...`.
+- "Unauthorized" → Missing or wrong `Authorization` header. Re-login, then retry.
+- "Upload fails" → Check file size vs `UPLOAD_MAX_FILE_SIZE`; verify `UPLOAD_DIR` permissions exist.
+- "Port already in use" → Stop other processes using `3000` or change `PORT`.
+- **"Validation crashes" → RESOLVED**: Our safe wrapper now handles all validation edge cases gracefully.
 
 Check health quickly:
 ```bash

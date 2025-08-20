@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, AppErrStatus } from '@carbonteq/hexapp';
 import type { ILogger } from '../../../shared/interfaces/ILogger.js';
 import type { UserRepositoryPort } from '../../ports/UserRepositoryPort.js';
 
@@ -12,11 +12,11 @@ export class DeleteUserUseCase {
     @inject('ILogger') private readonly logger: ILogger,
   ) {}
 
-  async execute(input: DeleteUserInput): Promise<Result<boolean, Error>> {
+  async execute(input: DeleteUserInput): Promise<AppResult<boolean>> {
     this.logger.info('UseCase: DeleteUser - start', { id: input.id });
     const res = await this.userRepo.deleteUser(input.id);
-    if (res.isErr()) return Result.Err(new Error('Failed to delete user'));
-    return Result.Ok(res.unwrap());
+    if (res.isErr()) return AppResult.Err(AppError.Generic('Failed to delete user'));
+    return AppResult.Ok(res.unwrap());
   }
 }
 

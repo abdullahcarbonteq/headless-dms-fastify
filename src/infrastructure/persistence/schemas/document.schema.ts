@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey(),
@@ -9,4 +9,8 @@ export const documents = pgTable('documents', {
   description: text('description'),
   userId: text('user_id').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (t) => ({
+  documentsUserIdIdx: index('documents_user_id_idx').on(t.userId),
+  documentsCreatedAtIdx: index('documents_created_at_idx').on(t.createdAt),
+  documentsDescriptionIdx: index('documents_description_idx').on(t.description),
+}))

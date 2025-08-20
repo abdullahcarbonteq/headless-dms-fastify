@@ -21,6 +21,17 @@ const jwtConfigSchema = z.object({
 
 const databaseConfigSchema = z.object({
   url: z.string().min(1, 'Database URL is required'),
+  pool: z.object({
+    max: z.coerce.number().int().positive().default(10),
+    min: z.coerce.number().int().nonnegative().default(0),
+    idleTimeoutMillis: z.coerce.number().int().nonnegative().default(30000),
+    connectionTimeoutMillis: z.coerce.number().int().nonnegative().default(2000),
+  }).default({
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  }),
 });
 
 // 12 FACTOR APP: Port Binding - Services export via port binding

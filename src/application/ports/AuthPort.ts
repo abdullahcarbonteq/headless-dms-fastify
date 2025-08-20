@@ -1,5 +1,5 @@
-import { Result } from '@carbonteq/fp';
 import { User } from '../../domain/entities/user/User.js';
+import type { AppResult } from '@carbonteq/hexapp';
 
 export interface JWTPayload {
   userId: string;
@@ -8,12 +8,12 @@ export interface JWTPayload {
 }
 
 export interface AuthPort {
-  generateToken(user: User): Promise<Result<string, Error>>;
-  verifyToken(token: string): Promise<Result<JWTPayload, Error>>;
-  hashPassword(password: string): Promise<Result<string, Error>>;
-  comparePassword(password: string, hashedPassword: string): Promise<Result<boolean, Error>>;
-  generateDownloadToken(payload: { docId: string }): Promise<Result<string, Error>>;
-  verifyDownloadToken(token: string): Promise<Result<{ docId: string }, Error>>;
+  generateToken(user: User): Promise<AppResult<string>>;
+  verifyToken(token: string): Promise<AppResult<JWTPayload>>;
+  hashPassword(password: string): Promise<AppResult<string>>;
+  comparePassword(password: string, hashedPassword: string): Promise<AppResult<boolean>>;
+  generateDownloadToken(payload: { docId: string }): Promise<AppResult<string>>;
+  verifyDownloadToken(token: string): Promise<AppResult<{ docId: string }>>;
 }
 
 export type { User };

@@ -3,7 +3,7 @@ import type { AuthPort, JWTPayload } from '../../application/ports/AuthPort.js';
 import { ILogger } from '../../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 import { User } from '../../domain/entities/user/User.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import bcrypt from 'bcrypt';
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 
@@ -20,7 +20,7 @@ export class JWTAuthService implements AuthPort {
     this.config = config;
   }
 
-  async generateToken(user: User): Promise<Result<string, Error>> {
+  async generateToken(user: User): Promise<AppResult<string>> {
     try {
       this.logger.debug('Generating JWT token', { userId: user.id, email: user.email });
       
@@ -37,47 +37,47 @@ export class JWTAuthService implements AuthPort {
       );
 
       this.logger.debug('JWT token generated successfully', { userId: user.id });
-      return Result.Ok(token);
+      return AppResult.Ok(token);
     } catch (error) {
       this.logger.error('Failed to generate JWT token', error instanceof Error ? error : new Error('Unknown error'), { userId: user.id });
-      return Result.Err(error instanceof Error ? error : new Error('Failed to generate token'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to generate token'));
     }
   }
 
-  async verifyToken(token: string): Promise<Result<JWTPayload, Error>> {
+  async verifyToken(token: string): Promise<AppResult<JWTPayload>> {
     try {
       this.logger.debug('Verifying JWT token');
       
       const payload = jwt.verify(token, this.config.jwt.secret as Secret) as JWTPayload;
       
       this.logger.debug('JWT token verified successfully', { userId: payload.userId });
-      return Result.Ok(payload);
+      return AppResult.Ok(payload);
     } catch (error) {
       this.logger.warn('JWT token verification failed', error instanceof Error ? error : new Error('Unknown error'));
-      return Result.Err(error instanceof Error ? error : new Error('Invalid token'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Invalid token'));
     }
   }
 
  
-  async generateDownloadToken(payload: { docId: string }): Promise<Result<string, Error>> {
+  async generateDownloadToken(payload: { docId: string }): Promise<AppResult<string>> {
     try {
       const token = jwt.sign(payload, this.config.jwt.secret as Secret, { expiresIn: '5m' });
-      return Result.Ok(token);
+      return AppResult.Ok(token);
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Failed to generate download token'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to generate download token'));
     }
   }
 
-  async verifyDownloadToken(token: string): Promise<Result<{ docId: string }, Error>> {
+  async verifyDownloadToken(token: string): Promise<AppResult<{ docId: string }>> {
     try {
       const payload = jwt.verify(token, this.config.jwt.secret as Secret) as { docId: string };
-      return Result.Ok(payload);
+      return AppResult.Ok(payload);
     } catch (error) {
-      return Result.Err(error instanceof Error ? error : new Error('Invalid token'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Invalid token'));
     }
   }
 
-  async hashPassword(password: string): Promise<Result<string, Error>> {
+  async hashPassword(password: string): Promise<AppResult<string>> {
     try {
       this.logger.debug('Hashing password');
       
@@ -85,24 +85,24 @@ export class JWTAuthService implements AuthPort {
       const hashedPassword = await bcrypt.hash(password, saltRounds);
       
       this.logger.debug('Password hashed successfully');
-      return Result.Ok(hashedPassword);
+      return AppResult.Ok(hashedPassword);
     } catch (error) {
       this.logger.error('Failed to hash password', error instanceof Error ? error : new Error('Unknown error'));
-      return Result.Err(error instanceof Error ? error : new Error('Failed to hash password'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to hash password'));
     }
   }
 
-  async comparePassword(password: string, hashedPassword: string): Promise<Result<boolean, Error>> {
+  async comparePassword(password: string, hashedPassword: string): Promise<AppResult<boolean>> {
     try {
       this.logger.debug('Comparing passwords');
       
       const isValid = await bcrypt.compare(password, hashedPassword);
       
       this.logger.debug('Password comparison completed', { isValid });
-      return Result.Ok(isValid);
+      return AppResult.Ok(isValid);
     } catch (error) {
       this.logger.error('Failed to compare passwords', error instanceof Error ? error : new Error('Unknown error'));
-      return Result.Err(error instanceof Error ? error : new Error('Failed to compare passwords'));
+      return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to compare passwords'));
     }
   }
 } 

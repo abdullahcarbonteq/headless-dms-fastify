@@ -2,10 +2,12 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { container } from '../../infrastructure/bootstrap/container.js';
 import { ResponseHandler } from './utils/ResponseHandler.js';
 import { ValidationMiddleware } from './middlewares/validation.js';
-import { paginationQuerySchema } from '../../shared/dto/pagination.dto.js';
+import { paginationQuerySchema } from './validators/pagination.query.schema.js';
 import { z } from 'zod';
 import { updateDocumentMetadataRequestSchema } from './validators/document.update-metadata.request.schema.js';
 import { searchDocumentsRequestSchema } from './validators/document.search.request.schema.js';
+import { uploadDocumentFieldsSchema } from './validators/document.upload.request.schema.js';
+import type { UpdateDocumentMetadataInput } from '../../application/dto/document/UpdateMetadataDTO.js';
 import { UploadDocumentUseCase } from '../../application/use-cases/document/UploadDocumentUseCase.js';
 import { GetAllDocumentsUseCase } from '../../application/use-cases/document/GetAllDocumentsUseCase.js';
 import { GetDocumentByIdUseCase } from '../../application/use-cases/document/GetDocumentByIdUseCase.js';
@@ -63,6 +65,15 @@ export const DocumentHttpController = {
         return ResponseHandler.error(reply, new Error('Failed to read upload stream (possibly exceeded size limits)'), 413);
       }
 
+      // Validate optional fields using Zod
+      const fieldValidation = uploadDocumentFieldsSchema.safeParse({
+        tags: fields.tags,
+        description: fields.description,
+      });
+      if (!fieldValidation.success) {
+        return ResponseHandler.error(reply, new Error('Invalid upload fields'), 400, fieldValidation.error.flatten());
+      }
+
       // Allow alternate client keys similar to the previous working flow
       const providedFilename = fields.filename ?? fields.name ?? saved?.filename ?? filePart?.filename;
       const providedMimetype = fields.mimetype ?? fields.mimeType ?? saved?.mimetype ?? filePart?.mimetype;
@@ -99,16 +110,15 @@ export const DocumentHttpController = {
       }
       const description = typeof fields.description === 'string' ? fields.description : undefined;
 
-      // Call use case with already-saved file path (path mode supported by use case)
-      const result = await uploadDocument.execute({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...( { path: saved.path } as any ),
+              // Call use case with already-saved file path (path mode supported by use case)
+        const result = await uploadDocument.execute({
+        path: saved.path,
         filename: providedFilename,
         mimetype: providedMimetype,
         tags,
         description,
         userId,
-      } as any);
+      } as any); // Use any for path mode compatibility
       return ResponseHandler.upload(reply, result);
     } catch (err) {
       return ResponseHandler.error(reply, err instanceof Error ? err : new Error('Upload failed'));
@@ -116,9 +126,10 @@ export const DocumentHttpController = {
   },
 
   async getAll(req: FastifyRequest, reply: FastifyReply) {
-    const { page, limit } = (req.query as any) || {};
+    // Use validated query parameters from validation middleware
+    const { page, limit } = req.query as { page?: number; limit?: number };
     const result = await getAllDocuments.execute({ page, limit });
-    return ResponseHandler.paginated(reply, result as any);
+    return ResponseHandler.paginated(reply, result);
   },
 
   async getById(req: FastifyRequest, reply: FastifyReply) {
@@ -128,9 +139,9 @@ export const DocumentHttpController = {
   },
 
   async updateMetadata(req: FastifyRequest, reply: FastifyReply) {
+    // Params and body are validated by ValidationMiddleware.updateMetadata
     const { id } = req.params as { id: string };
-    const body = req.body as any;
-    const result = await updateDocumentMetadata.execute({ id, ...body });
+    const result = await updateDocumentMetadata.execute({ id, ...(req.body as Omit<UpdateDocumentMetadataInput, 'id'>) });
     if (result.isErr()) return ResponseHandler.error(reply, result.unwrapErr(), 400);
     return ResponseHandler.success(reply, result, 200, 'Metadata updated successfully');
   },
@@ -142,10 +153,16 @@ export const DocumentHttpController = {
   },
 
   async search(req: FastifyRequest, reply: FastifyReply) {
-    const { tags, description, page, limit } = (req.query as any) || {};
+    // Use validated query parameters from validation middleware
+    const { tags, description, page, limit } = req.query as { 
+      tags?: string | string[]; 
+      description?: string; 
+      page?: number; 
+      limit?: number 
+    };
     const tagArray = typeof tags === 'string' ? tags.split(',').map((t: string) => t.trim()).filter(Boolean) : tags;
     const result = await searchDocuments.execute({ tags: tagArray, description, page, limit });
-    return ResponseHandler.paginated(reply, result as any);
+    return ResponseHandler.paginated(reply, result);
   },
 
   async generateDownloadLink(req: FastifyRequest, reply: FastifyReply) {

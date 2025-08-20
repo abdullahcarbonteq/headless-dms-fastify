@@ -16,11 +16,4 @@ export interface SearchDocumentsOutputItem {
   userId: string;
 }
 
-export interface PaginatedSearchDocumentsOutput {
-  data: SearchDocumentsOutputItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
 

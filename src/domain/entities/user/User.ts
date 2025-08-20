@@ -1,5 +1,5 @@
 import { BaseEntity } from '../base/BaseEntity.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { UserName } from '../../value-objects/UserName.js';
 import { EmailAddress } from '../../value-objects/EmailAddress.js';
 import { PasswordHash } from '../../value-objects/PasswordHash.js';
@@ -68,17 +68,17 @@ export class User extends BaseEntity<UserData> {
    * @param newName - New name to set
    * @returns Result indicating success or failure with reason
    */
-  updateName(newName: string): Result<User, Error> {
+  updateName(newName: string): AppResult<User> {
     // Validate through Value Object for stronger guarantees
     const nameRes = UserName.create(newName);
-    if (nameRes.isErr()) return Result.Err(nameRes.unwrapErr());
+    if (nameRes.isErr()) return AppResult.Err(AppError.Generic(nameRes.unwrapErr().message));
     
     if (!newName.trim()) {
-      return Result.Err(new Error('Name cannot be empty'));
+      return AppResult.Err(AppError.Generic('Name cannot be empty'));
     }
     
     if (this._name === newName.trim()) {
-      return Result.Err(new Error('New name must be different from current name'));
+      return AppResult.Err(AppError.Generic('New name must be different from current name'));
     }
     
     this._name = nameRes.unwrap().value;
@@ -86,10 +86,10 @@ export class User extends BaseEntity<UserData> {
     
     // Ensure entity is still valid after state change
     if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
+      return AppResult.Err(AppError.Generic('Entity became invalid after state change'));
     }
     
-    return Result.Ok(this);
+    return AppResult.Ok(this);
   }
 
   /**
@@ -97,26 +97,26 @@ export class User extends BaseEntity<UserData> {
    * @param newEmail - New email to set
    * @returns Result indicating success or failure with reason
    */
-  updateEmail(newEmail: string): Result<User, Error> {
+  updateEmail(newEmail: string): AppResult<User> {
     const emailRes = EmailAddress.create(newEmail);
-    if (emailRes.isErr()) return Result.Err(emailRes.unwrapErr());
+    if (emailRes.isErr()) return AppResult.Err(AppError.Generic(emailRes.unwrapErr().message));
     
     if (!newEmail.trim()) {
-      return Result.Err(new Error('Email cannot be empty'));
+      return AppResult.Err(AppError.Generic('Email cannot be empty'));
     }
     
     if (this._email.toLowerCase() === newEmail.trim().toLowerCase()) {
-      return Result.Err(new Error('New email must be different from current email'));
+      return AppResult.Err(AppError.Generic('New email must be different from current email'));
     }
     
     this._email = emailRes.unwrap().value;
     this.markAsUpdated();
     
     if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
+      return AppResult.Err(AppError.Generic('Entity became invalid after state change'));
     }
     
-    return Result.Ok(this);
+    return AppResult.Ok(this);
   }
 
   /**
@@ -124,27 +124,27 @@ export class User extends BaseEntity<UserData> {
    * @param newPasswordHash - New password hash to set
    * @returns Result indicating success or failure with reason
    */
-  updatePassword(newPasswordHash: string): Result<User, Error> {
+  updatePassword(newPasswordHash: string): AppResult<User> {
     const passRes = PasswordHash.create(newPasswordHash);
-    if (passRes.isErr()) return Result.Err(passRes.unwrapErr());
+    if (passRes.isErr()) return AppResult.Err(AppError.Generic(passRes.unwrapErr().message));
     
     if (!newPasswordHash.trim()) {
-      return Result.Err(new Error('Password hash cannot be empty'));
+      return AppResult.Err(AppError.Generic('Password hash cannot be empty'));
     }
     
 
     if (this._passwordHash === newPasswordHash) {
-      return Result.Err(new Error('New password must be different from current password'));
+      return AppResult.Err(AppError.Generic('New password must be different from current password'));
     }
     
     this._passwordHash = passRes.unwrap().value;
     this.markAsUpdated();
     
     if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
+      return AppResult.Err(AppError.Generic('Entity became invalid after state change'));
     }
     
-    return Result.Ok(this);
+    return AppResult.Ok(this);
   }
 
   /**
@@ -152,14 +152,14 @@ export class User extends BaseEntity<UserData> {
    * @param newRole - New role to set
    * @returns Result indicating success or failure with reason
    */
-  updateRole(newRole: 'user' | 'admin'): Result<User, Error> {
+  updateRole(newRole: 'user' | 'admin'): AppResult<User> {
     if (newRole !== 'user' && newRole !== 'admin') {
-      return Result.Err(new Error('Invalid role'));
+      return AppResult.Err(AppError.Generic('Invalid role'));
     }
     
     // BUSINESS RULE: Role cannot be the same as current
     if (this._role === newRole) {
-      return Result.Err(new Error('New role must be different from current role'));
+      return AppResult.Err(AppError.Generic('New role must be different from current role'));
     }
     
     this._role = newRole;
@@ -167,10 +167,10 @@ export class User extends BaseEntity<UserData> {
     
     // Ensure entity is still valid after state change
     if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
+      return AppResult.Err(AppError.Generic('Entity became invalid after state change'));
     }
     
-    return Result.Ok(this);
+    return AppResult.Ok(this);
   }
 
   isAdmin(): boolean {

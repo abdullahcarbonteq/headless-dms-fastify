@@ -1,7 +1,8 @@
 import { inject, injectable } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, AppErrStatus } from '@carbonteq/hexapp';
 import type { ILogger } from '../../../shared/interfaces/ILogger.js';
 import type { DocumentRepositoryPort } from '../../ports/DocumentRepositoryPort.js';
+import type { Document } from '../../../domain/entities/document/Document.js';
 
 @injectable()
 export class GetDocumentByIdUseCase {
@@ -10,9 +11,13 @@ export class GetDocumentByIdUseCase {
     @inject('ILogger') private readonly logger: ILogger,
   ) {}
 
-  async execute(id: string) {
+  async execute(id: string): Promise<AppResult<Document | null>> {
     this.logger.info('UseCase: GetDocumentById - start', { id });
-    return this.docRepo.findById(id);
+    const result = await this.docRepo.findById(id);
+    if (result.isErr()) {
+      return AppResult.Err(AppError.Generic('Failed to get document'));
+    }
+    return AppResult.Ok(result.unwrap());
   }
 }
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { paginationQuerySchema } from '../../../shared/dto/pagination.dto.js';
+import { paginationQuerySchema } from './pagination.query.schema.js';
 
 export const searchDocumentsRequestSchema = paginationQuerySchema.extend({
   tags: z.string().optional(),

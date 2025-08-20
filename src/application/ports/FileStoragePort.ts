@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import type { AppResult } from '@carbonteq/hexapp';
 
 export interface SavedFileInfo {
   path: string;
@@ -8,7 +8,7 @@ export interface SavedFileInfo {
 }
 
 export interface FileStoragePort {
-  save(fileStream: NodeJS.ReadableStream, originalFilename: string, mimetype: string): Promise<Result<SavedFileInfo, Error>>;
-  remove(path: string): Promise<Result<boolean, Error>>;
+  save(fileStream: NodeJS.ReadableStream, originalFilename: string, mimetype: string): Promise<AppResult<SavedFileInfo>>;
+  remove(path: string): Promise<AppResult<boolean>>;
 }
 

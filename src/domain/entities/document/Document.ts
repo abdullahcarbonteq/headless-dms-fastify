@@ -1,5 +1,4 @@
-import { BaseEntity } from '../base/BaseEntity.js';
-import { Result } from '@carbonteq/fp';
+import { BaseEntity, AppResult, AppError, UUID, DateTime } from '@carbonteq/hexapp';
 import { Description } from '../../value-objects/Description.js';
 import { FileName } from '../../value-objects/FileName.js';
 import { TagList } from '../../value-objects/TagList.js';
@@ -23,7 +22,7 @@ export enum DocumentStatus {
   DELETED = 'deleted'
 }
 
-export class Document extends BaseEntity<DocumentData> {
+export class Document extends BaseEntity {
   private _filename: string;
   private _mimetype: string;
   private _path: string;
@@ -33,7 +32,7 @@ export class Document extends BaseEntity<DocumentData> {
   private _status: DocumentStatus;
 
   constructor(
-    id: string,
+    id: UUID,
     filename: string,
     mimetype: string,
     path: string,
@@ -41,10 +40,11 @@ export class Document extends BaseEntity<DocumentData> {
     description: string | null,
     userId: string,
     status: DocumentStatus = DocumentStatus.ACTIVE,
-    createdAt?: Date,
-    updatedAt?: Date
+    createdAt?: DateTime,
+    updatedAt?: DateTime
   ) {
-    super(id, createdAt || new Date(), updatedAt || new Date());
+    super();
+    this._copyBaseProps({ id, createdAt: createdAt || DateTime.now(), updatedAt: updatedAt || DateTime.now() });
     this._filename = filename;
     this._mimetype = mimetype;
     this._path = path;
@@ -91,139 +91,106 @@ export class Document extends BaseEntity<DocumentData> {
     return this._tags.includes(tag);
   }
 
-  addTag(tag: string): Result<Document, Error> {
+  addTag(tag: string): AppResult<Document> {
     const listRes = TagList.create([tag]);
-    if (listRes.isErr()) return Result.Err(listRes.unwrapErr());
+    if (listRes.isErr()) return AppResult.Err(AppError.Generic(listRes.unwrapErr().message));
     
     if (this.hasTag(tag)) {
-      return Result.Err(new Error('Tag already exists'));
+      return AppResult.Err(AppError.Generic('Tag already exists'));
     }
-    
-    //Maximum 10 tags per document
-    if (this._tags.length >= 10) {
-      return Result.Err(new Error('Maximum 10 tags allowed per document'));
-    }
-    
+
     this._tags.push(tag);
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
-  removeTag(tag: string): Result<Document, Error> {
-    if (!this.hasTag(tag)) {
-      return Result.Err(new Error('Tag does not exist'));
-    }
-    
+  removeTag(tag: string): AppResult<Document> {
     const index = this._tags.indexOf(tag);
+    if (index === -1) {
+      return AppResult.Err(AppError.Generic('Tag does not exist'));
+    }
+
     this._tags.splice(index, 1);
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
-  updateFilename(newFilename: string): Result<Document, Error> {
-    const nameRes = FileName.create(newFilename);
-    if (nameRes.isErr()) return Result.Err(nameRes.unwrapErr());
+  updateTags(tags: string[]): AppResult<Document> {
+    const listRes = TagList.create(tags);
+    if (listRes.isErr()) return AppResult.Err(AppError.Generic(listRes.unwrapErr().message));
     
-    // BUSINESS RULE: Filename cannot be empty
-    if (!newFilename.trim()) {
-      return Result.Err(new Error('Filename cannot be empty'));
-    }
-    
-    // BUSINESS RULE: Filename cannot be the same as current
-    if (this._filename === newFilename.trim()) {
-      return Result.Err(new Error('New filename must be different from current filename'));
-    }
-    
-    this._filename = nameRes.unwrap().value;
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this._tags = [...tags];
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
-  updateDescription(newDescription: string | null): Result<Document, Error> {
-    // Validate through VO
-    const descRes = Description.create(newDescription);
-    if (descRes.isErr()) return Result.Err(descRes.unwrapErr());
+  updateDescription(description: string | null): AppResult<Document> {
+    const descRes = Description.create(description);
+    if (descRes.isErr()) return AppResult.Err(AppError.Generic(descRes.unwrapErr().message));
     
-    // BUSINESS RULE: Description cannot be the same as current
-    if (this._description === newDescription) {
-      return Result.Err(new Error('New description must be different from current description'));
-    }
-    
-    this._description = descRes.unwrap().value;
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this._description = description;
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
-  archive(): Result<Document, Error> {
-    if (!this.isActive()) {
-      return Result.Err(new Error('Only active documents can be archived'));
-    }
+  updateFilename(filename: string): AppResult<Document> {
+    const nameRes = FileName.create(filename);
+    if (nameRes.isErr()) return AppResult.Err(AppError.Generic(nameRes.unwrapErr().message));
     
+    this._filename = filename;
+    this.markUpdated();
+    return AppResult.Ok(this);
+  }
+
+  updateMimeType(mimetype: string): AppResult<Document> {
+    // Basic validation - could be enhanced with MimeType value object
+    if (!mimetype || mimetype.trim() === '') {
+      return AppResult.Err(AppError.Generic('MIME type cannot be empty'));
+    }
+
+    this._mimetype = mimetype;
+    this.markUpdated();
+    return AppResult.Ok(this);
+  }
+
+  updatePath(path: string): AppResult<Document> {
+    if (!path || path.trim() === '') {
+      return AppResult.Err(AppError.Generic('Path cannot be empty'));
+    }
+
+    this._path = path;
+    this.markUpdated();
+    return AppResult.Ok(this);
+  }
+
+  archive(): AppResult<Document> {
+    if (this._status === DocumentStatus.ARCHIVED) {
+      return AppResult.Err(AppError.Generic('Document is already archived'));
+    }
+
     this._status = DocumentStatus.ARCHIVED;
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
-  restore(): Result<Document, Error> {
-    if (!this.isArchived()) {
-      return Result.Err(new Error('Only archived documents can be restored'));
+  activate(): AppResult<Document> {
+    if (this._status === DocumentStatus.ACTIVE) {
+      return AppResult.Err(AppError.Generic('Document is already active'));
     }
-    
+
     this._status = DocumentStatus.ACTIVE;
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
-  softDelete(): Result<Document, Error> {
-    if (this.isDeleted()) {
-      return Result.Err(new Error('Document is already deleted'));
+  softDelete(): AppResult<Document> {
+    if (this._status === DocumentStatus.DELETED) {
+      return AppResult.Err(AppError.Generic('Document is already deleted'));
     }
-    
+
     this._status = DocumentStatus.DELETED;
-    this.markAsUpdated();
-    
-    // Ensure entity is still valid after state change
-    if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
-    }
-    
-    return Result.Ok(this);
+    this.markUpdated();
+    return AppResult.Ok(this);
   }
 
   canBeAccessedBy(userId: string): boolean {
@@ -267,18 +234,18 @@ export class Document extends BaseEntity<DocumentData> {
    * Replace all tags
    * @param newTags - New tags to replace existing ones
    */
-  replaceTags(newTags: string[]): Result<Document, Error> {
+  replaceTags(newTags: string[]): AppResult<Document> {
     const listRes = TagList.create(newTags);
-    if (listRes.isErr()) return Result.Err(listRes.unwrapErr());
+    if (listRes.isErr()) return AppResult.Err(AppError.Generic(listRes.unwrapErr().message));
     this._tags = [...listRes.unwrap().values];
-    this.markAsUpdated();
+    this.markUpdated();
     
     // Ensure entity is still valid after state change
     if (!this.validate()) {
-      return Result.Err(new Error('Entity became invalid after state change'));
+      return AppResult.Err(AppError.Generic('Entity became invalid after state change'));
     }
     
-    return Result.Ok(this);
+    return AppResult.Ok(this);
   }
 
   
@@ -314,30 +281,34 @@ export class Document extends BaseEntity<DocumentData> {
     return !this.isDeleted();
   }
 
+  // Validation method
   validate(): boolean {
-    return true; // Construction and updates validated via Value Objects
+    return this._filename.length > 0 && 
+           this._mimetype.length > 0 && 
+           this._path.length > 0 && 
+           this._userId.length > 0;
   }
 
-  // Serialization
-  toJSON(): DocumentData {
+  // Serialization method required by hexapp BaseEntity
+  serialize(): DocumentData {
     return {
-      id: this._id,
+      id: this.id.toString(),
       filename: this._filename,
       mimetype: this._mimetype,
       path: this._path,
-      tags: this._tags,
+      tags: [...this._tags],
       description: this._description,
       userId: this._userId,
       status: this._status,
-      createdAt: this._createdAt,
-      updatedAt: this._updatedAt
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt
     };
   }
 
-  // Cloning
+  // Clone method
   clone(): Document {
     return new Document(
-      this._id,
+      this.id,
       this._filename,
       this._mimetype,
       this._path,
@@ -345,8 +316,89 @@ export class Document extends BaseEntity<DocumentData> {
       this._description,
       this._userId,
       this._status,
-      this._createdAt,
-      this._updatedAt
+      this.createdAt,
+      this.updatedAt
     );
+  }
+
+  // Static factory method
+  static create(data: DocumentData): AppResult<Document> {
+    try {
+      const document = new Document(
+        UUID.fromTrusted(data.id),
+        data.filename,
+        data.mimetype,
+        data.path,
+        data.tags,
+        data.description,
+        data.userId,
+        data.status,
+        DateTime.from(data.createdAt),
+        DateTime.from(data.updatedAt)
+      );
+
+      if (!document.validate()) {
+        return AppResult.Err(AppError.Generic('Invalid document data'));
+      }
+
+      return AppResult.Ok(document);
+    } catch (error) {
+      return AppResult.Err(AppError.Generic('Failed to create document'));
+    }
+  }
+
+  // Static factory method for new documents
+  static createNew(
+    filename: string,
+    mimetype: string,
+    path: string,
+    tags: string[],
+    description: string | null,
+    userId: string
+  ): AppResult<Document> {
+    try {
+      const document = new Document(
+        UUID.init(),
+        filename,
+        mimetype,
+        path,
+        tags,
+        description,
+        userId
+      );
+
+      if (!document.validate()) {
+        return AppResult.Err(AppError.Generic('Invalid document data'));
+      }
+
+      return AppResult.Ok(document);
+    } catch (error) {
+      return AppResult.Err(AppError.Generic('Failed to create document'));
+    }
+  }
+
+  // Static factory method from database row
+  static fromDatabaseRow(row: any): AppResult<Document> {
+    try {
+      return Document.create({
+        id: row.id,
+        filename: row.filename,
+        mimetype: row.mimetype,
+        path: row.path,
+        tags: row.tags || [],
+        description: row.description,
+        userId: row.user_id,
+        status: row.status || DocumentStatus.ACTIVE,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      });
+    } catch (error) {
+      return AppResult.Err(AppError.Generic('Failed to create document from database row'));
+    }
+  }
+
+  // JSON serialization for API responses
+  toJSON(): DocumentData {
+    return this.serialize();
   }
 } 

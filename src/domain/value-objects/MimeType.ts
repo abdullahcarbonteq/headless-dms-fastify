@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, BaseValueObject } from '@carbonteq/hexapp';
 
 const COMMON_TYPES = new Set([
   'application/pdf',
@@ -8,19 +8,27 @@ const COMMON_TYPES = new Set([
   'application/zip',
 ]);
 
-export class MimeType {
-  public readonly value: string;
-  private constructor(value: string) { this.value = value; }
 
-  static create(raw: string): Result<MimeType, Error> {
+export class MimeType extends BaseValueObject<string> {
+  public readonly value: string;
+  private constructor(value: string) { 
+    super();
+    this.value = value; 
+  }
+
+  static create(raw: string): AppResult<MimeType> {
     if (typeof raw !== 'string' || !raw.includes('/')) {
-      return Result.Err(new Error('Invalid MIME type'));
+      return AppResult.Err(AppError.Generic('Invalid MIME type'));
     }
     const mt = raw.trim().toLowerCase();
     if (!COMMON_TYPES.has(mt) && !mt.startsWith('application/') && !mt.startsWith('image/') && !mt.startsWith('text/')) {
-      return Result.Err(new Error('Unsupported MIME type'));
+      return AppResult.Err(AppError.Generic('Unsupported MIME type'));
     }
-    return Result.Ok(new MimeType(mt));
+    return AppResult.Ok(new MimeType(mt));
+  }
+
+  serialize(): string {
+    return this.value;
   }
 }
 

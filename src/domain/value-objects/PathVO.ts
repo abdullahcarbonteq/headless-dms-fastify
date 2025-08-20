@@ -1,15 +1,22 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult, AppError, BaseValueObject } from '@carbonteq/hexapp';
 
-export class PathVO {
+export class PathVO extends BaseValueObject<string> {
   public readonly value: string;
-  private constructor(value: string) { this.value = value; }
+  private constructor(value: string) { 
+    super();
+    this.value = value; 
+  }
 
-  static create(raw: string): Result<PathVO, Error> {
-    if (typeof raw !== 'string') return Result.Err(new Error('Path must be a string'));
-    const p = raw.trim();
-    if (p.length === 0) return Result.Err(new Error('Path cannot be empty'));
-    if (p.length > 500) return Result.Err(new Error('Path too long'));
-    return Result.Ok(new PathVO(p));
+  static create(raw: string): AppResult<PathVO> {
+    if (!raw || typeof raw !== 'string') return AppResult.Err(AppError.Generic('Invalid path'));
+    const path = raw.trim();
+    if (path.length === 0) return AppResult.Err(AppError.Generic('Path cannot be empty'));
+    if (path.length > 500) return AppResult.Err(AppError.Generic('Path too long'));
+    return AppResult.Ok(new PathVO(path));
+  }
+
+  serialize(): string {
+    return this.value;
   }
 }
 
