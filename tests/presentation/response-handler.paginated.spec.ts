@@ -36,20 +36,25 @@ describe('ResponseHandler.paginated (hexapp Paginated)', () => {
     });
   });
 
-  it('handles array (non-paginated) input', () => {
+  it('handles single-page input (normalized) with HexPaginated shape', () => {
     const reply = new ReplyStub() as any;
-    const arr = [{ a: 1 }, { a: 2 }];
+    const paginated = {
+      data: [{ a: 1 }, { a: 2 }],
+      pageNum: 1,
+      pageSize: 2,
+      totalPages: 1,
+    };
 
     const result = {
       isErr: () => false,
-      unwrap: () => arr,
+      unwrap: () => paginated,
     } as any;
 
     ResponseHandler.paginated(reply, result);
 
     expect(reply.statusCode).to.equal(200);
     expect(reply.sent.success).to.equal(true);
-    expect(reply.sent.data).to.deep.equal(arr);
+    expect(reply.sent.data).to.deep.equal(paginated.data);
     expect(reply.sent.pagination).to.deep.equal({
       pageNum: 1,
       pageSize: 2,

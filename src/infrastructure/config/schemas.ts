@@ -73,11 +73,26 @@ const appConfigSchema = z.object({
   upload: uploadConfigSchema,
 });
 
+const storageStrategySchema = z.object({
+  rules: z.unknown().optional(),
+  fallback: z.array(z.enum(['fs', 's3', 'gcs', 'azure'])).optional(),
+}).optional();
+
+const storageConfigSchema = z.object({
+  provider: z.enum(['fs', 's3', 'gcs', 'azure', 'multi']).default('fs'),
+  timeoutMs: z.object({
+    save: z.coerce.number().int().positive().default(30000),
+    remove: z.coerce.number().int().positive().default(10000),
+  }).default({ save: 30000, remove: 10000 }),
+  strategy: storageStrategySchema,
+});
+
 export const configSchema = z.object({
   database: databaseConfigSchema,
   jwt: jwtConfigSchema,
   server: serverConfigSchema,
   app: appConfigSchema,
+  storage: storageConfigSchema,
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -85,3 +100,4 @@ export type DatabaseConfig = z.infer<typeof databaseConfigSchema>;
 export type JWTConfig = z.infer<typeof jwtConfigSchema>;
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 export type AppConfig = z.infer<typeof appConfigSchema>; 
+export type StorageConfig = z.infer<typeof storageConfigSchema>;

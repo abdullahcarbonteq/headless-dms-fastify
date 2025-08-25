@@ -22,7 +22,11 @@ export class ApplicationBootstrap {
     this.logger.info('🚀 Initializing DMS Application...');
 
     try {
-      this.config.validate();
+      const conf = this.config.validate();
+      if ((conf as any).isErr && (conf as any).isErr()) {
+        const err = (conf as any).unwrapErr ? (conf as any).unwrapErr() : new Error('Invalid configuration');
+        throw err;
+      }
       this.logger.info('✅ Configuration validated successfully');
 
       await this.fastifyBootstrap.registerPlugins();

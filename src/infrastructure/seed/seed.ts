@@ -1,4 +1,5 @@
 import { container } from '../bootstrap/container.js';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { db } from '../persistence/db.js';
 import { users } from '../persistence/schemas/user.schema.js';
 import { documents } from '../persistence/schemas/document.schema.js';
@@ -19,7 +20,7 @@ function randomTags(): string[] {
   return Array.from(tags);
 }
 
-export async function runSeed(options: SeedOptions = {}): Promise<void> {
+export async function runSeed(options: SeedOptions = {}): Promise<AppResult<void>> {
   const userRepo = container.resolve<UserRepositoryPort>('UserRepositoryPort');
   const docRepo = container.resolve<DocumentRepositoryPort>('DocumentRepositoryPort');
   const auth = container.resolve<AuthPort>('AuthPort');
@@ -29,7 +30,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<void> {
     await db.delete(documents);
     await db.delete(users);
     if (options.clearOnly) {
-      return; // Stop here if only clearing
+      return AppResult.Ok(undefined); // Stop here if only clearing
     }
   }
 
@@ -37,27 +38,27 @@ export async function runSeed(options: SeedOptions = {}): Promise<void> {
   const adminEmail = 'admin@example.com';
   const adminPassword = 'Admin@123';
   const adminHash = await auth.hashPassword(adminPassword);
-  if (adminHash.isErr()) throw new Error('Failed to hash admin password');
+  if (adminHash.isErr()) return AppResult.Err(AppError.Generic('Failed to hash admin password'));
   const admin = UserFactory.createAdminUser('Admin User', adminEmail, adminHash.unwrap());
-  if (admin.isErr()) throw admin.unwrapErr();
-  await userRepo.createUser(admin.unwrap());
+  if (admin.isErr()) return AppResult.Err(admin.unwrapErr());
+  const createdAdmin = await userRepo.createUser(admin.unwrap());
+  if (createdAdmin.isErr()) return AppResult.Err(createdAdmin.unwrapErr());
 
   // Create regular users
   for (let i = 0; i < 5; i++) {
     const email = `user${Date.now()}_${i}@example.com`;
     const pass = await auth.hashPassword('User@123');
-    if (pass.isErr()) throw pass.unwrapErr();
+    if (pass.isErr()) return AppResult.Err(pass.unwrapErr());
     const userRes = UserFactory.createRegularUser(`User ${i + 1}`, email, pass.unwrap());
-    if (userRes.isErr()) throw userRes.unwrapErr();
+    if (userRes.isErr()) return AppResult.Err(userRes.unwrapErr());
     const userCreate = await userRepo.createUser(userRes.unwrap());
-    if (userCreate.isErr()) throw userCreate.unwrapErr();
+    if (userCreate.isErr()) return AppResult.Err(userCreate.unwrapErr());
   }
 
   // Load all users to attach documents
   const allUsersRes = await userRepo.getAllUsers();
-  if (allUsersRes.isErr()) throw allUsersRes.unwrapErr();
-  const allUsersOrPage = allUsersRes.unwrap();
-  const allUsers = Array.isArray(allUsersOrPage) ? allUsersOrPage : allUsersOrPage.data;
+  if (allUsersRes.isErr()) return AppResult.Err(allUsersRes.unwrapErr());
+  const allUsers = allUsersRes.unwrap().data;
 
   // Seed documents
   for (const u of allUsers) {
@@ -67,10 +68,11 @@ export async function runSeed(options: SeedOptions = {}): Promise<void> {
       const mimetype = ext === '.pdf' ? 'application/pdf' : ext === '.txt' ? 'text/plain' : 'image/png';
       const path = `${process.cwd()}/uploads/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
       const docRes = DocumentFactory.createDocument({ filename, mimetype, path, tags: randomTags(), description: 'seeded file', userId: u.id });
-      if (docRes.isErr()) throw docRes.unwrapErr();
+      if (docRes.isErr()) return AppResult.Err(docRes.unwrapErr());
       const created = await docRepo.createDocument(docRes.unwrap());
-      if (created.isErr()) throw created.unwrapErr();
+      if (created.isErr()) return AppResult.Err(created.unwrapErr());
     }
   }
+  return AppResult.Ok(undefined);
 }
 

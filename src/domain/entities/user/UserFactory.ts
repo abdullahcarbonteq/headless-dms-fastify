@@ -3,7 +3,7 @@ import { AppResult, AppError } from '@carbonteq/hexapp';
 import { EmailAddress } from '../../value-objects/EmailAddress.js';
 import { PasswordHash } from '../../value-objects/PasswordHash.js';
 import { UserName } from '../../value-objects/UserName.js';
-import { UserId } from '../../value-objects/Ids.js';
+import { UUID } from '@carbonteq/hexapp';
 
 
 export class UserFactory {
@@ -15,18 +15,18 @@ export class UserFactory {
       return AppResult.Err(AppError.Generic('Invalid role'));
     }
 
-    const idRes = UserId.create();
+    const idRes = UUID.init();
     const nameRes = UserName.create(data.name);
     const emailRes = EmailAddress.create(data.email);
     const passRes = PasswordHash.create(data.passwordHash);
-    if (idRes.isErr()) return AppResult.Err(AppError.Generic(idRes.unwrapErr().message));
+    // UUID.init returns a UUID directly (no AppResult)
     if (nameRes.isErr()) return AppResult.Err(AppError.Generic(nameRes.unwrapErr().message));
     if (emailRes.isErr()) return AppResult.Err(AppError.Generic(emailRes.unwrapErr().message));
     if (passRes.isErr()) return AppResult.Err(AppError.Generic(passRes.unwrapErr().message));
 
     const now = new Date();
     const user = new User(
-      idRes.unwrap().value,
+      idRes,
       nameRes.unwrap().value,
       emailRes.unwrap().value,
       passRes.unwrap().value,

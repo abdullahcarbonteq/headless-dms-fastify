@@ -2,7 +2,6 @@ import { Document, DocumentStatus } from './Document.js';
 import { FileName } from '../../value-objects/FileName.js';
 import { PathVO } from '../../value-objects/PathVO.js';
 import { AppResult, AppError, UUID, DateTime } from '@carbonteq/hexapp';
-import { DocumentId, UserId } from '../../value-objects/Ids.js';
 import { MimeType } from '../../value-objects/MimeType.js';
 import { TagList } from '../../value-objects/TagList.js';
 import { Description } from '../../value-objects/Description.js';
@@ -28,27 +27,24 @@ export class DocumentFactory {
       const mimeRes = MimeType.create(data.mimetype);
       const tagRes = TagList.create(data.tags);
       const descRes = Description.create(data.description ?? null);
-      const userIdRes = UserId.create(data.userId);
       if (nameRes.isErr()) return AppResult.Err(AppError.Generic(nameRes.unwrapErr().message));
       if (pathRes.isErr()) return AppResult.Err(AppError.Generic(pathRes.unwrapErr().message));
       if (mimeRes.isErr()) return AppResult.Err(AppError.Generic(mimeRes.unwrapErr().message));
       if (tagRes.isErr()) return AppResult.Err(AppError.Generic(tagRes.unwrapErr().message));
       if (descRes.isErr()) return AppResult.Err(AppError.Generic(descRes.unwrapErr().message));
-      if (userIdRes.isErr()) return AppResult.Err(AppError.Generic(userIdRes.unwrapErr().message));
 
-      // Generate id once
-      const idRes = DocumentId.create();
-      if (idRes.isErr()) return AppResult.Err(AppError.Generic(idRes.unwrapErr().message));
+      // Generate id once using hexapp UUID
+      const newId = UUID.init();
 
       // Create document entity with normalized values
       const document = new Document(
-        UUID.fromTrusted(idRes.unwrap().value),
+        newId,
         nameRes.unwrap().value,
         mimeRes.unwrap().value,
         pathRes.unwrap().value,
         tagRes.unwrap().values,
         descRes.unwrap().value,
-        userIdRes.unwrap().value,
+        data.userId,
         DocumentStatus.ACTIVE
       );
 
@@ -163,7 +159,7 @@ export class DocumentFactory {
   /**
    * Create a document entity for testing purposes
    */
-  static createTestDocument(overrides: Partial<CreateDocumentData> = {}): Document {
+  static createTestDocument(overrides: Partial<CreateDocumentData> = {}): AppResult<Document> {
     const defaultData: CreateDocumentData = {
       filename: 'test-document.pdf',
       mimetype: 'application/pdf',
@@ -176,10 +172,10 @@ export class DocumentFactory {
 
     const result = this.createDocument(defaultData);
     if (result.isErr()) {
-      throw new Error('Failed to create test document: ' + result.unwrapErr().message);
+      return AppResult.Err(AppError.Generic('Failed to create test document: ' + result.unwrapErr().message));
     }
 
-    return result.unwrap();
+    return AppResult.Ok(result.unwrap());
   }
 
   /**

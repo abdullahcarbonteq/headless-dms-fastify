@@ -1,6 +1,7 @@
 import { injectable } from 'tsyringe';
 import { IConfigurationService } from '../../shared/interfaces/IConfigurationService.js';
 import { config } from './index.js';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 
 /**
  * Configuration service implementation
@@ -26,19 +27,29 @@ export class ConfigurationService implements IConfigurationService {
     return this._config.server;
   }
 
-  validate(): void {
+  get storage() {
+    return this._config.storage;
+  }
+
+  validate(): AppResult<void> {
     // Configuration is already validated by Zod schema in config/index.ts
     // This method can be used for additional runtime validation if needed
     if (!this._config.jwt.secret) {
-      throw new Error('JWT secret is required');
+      return AppResult.Err(AppError.Generic('JWT secret is required'));
     }
     
     if (!this._config.database.url) {
-      throw new Error('Database URL is required');
+      return AppResult.Err(AppError.Generic('Database URL is required'));
     }
+
+    // Basic guard: storage provider must exist (zod default enforces this)
+    if (!this._config.storage?.provider) {
+      return AppResult.Err(AppError.Generic('Storage provider is required'));
+    }
+    return AppResult.Ok(undefined);
   }
 
-  getAll(): any {
+  getAll() {
     return this._config;
   }
 } 

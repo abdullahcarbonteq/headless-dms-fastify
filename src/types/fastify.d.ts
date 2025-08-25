@@ -68,6 +68,26 @@ declare global {
       PGPOOL_MIN?: string;
       PG_IDLE_TIMEOUT_MS?: string;
       PG_CONN_TIMEOUT_MS?: string;
+      STORAGE_PROVIDER?: 'fs' | 's3' | 'gcs' | 'azure' | 'multi';
+      STORAGE_TIMEOUT_SAVE_MS?: string;
+      STORAGE_TIMEOUT_REMOVE_MS?: string;
+      MULTI_STORAGE_RULES?: string; // JSON
+      // Provider-specific envs (examples)
+      AWS_ACCESS_KEY_ID?: string;
+      AWS_SECRET_ACCESS_KEY?: string;
+      AWS_REGION?: string;
+      S3_BUCKET?: string;
+      S3_PREFIX?: string;
+      GOOGLE_APPLICATION_CREDENTIALS?: string;
+      GCS_BUCKET?: string;
+      GCS_PREFIX?: string;
+      STORAGE_EMULATOR_HOST?: string;
+      GCS_EMULATOR_HOST?: string;
+      GCP_PROJECT?: string;
+      GOOGLE_CLOUD_PROJECT?: string;
+      AZURE_STORAGE_CONNECTION_STRING?: string;
+      AZURE_CONTAINER?: string;
+      AZURE_PREFIX?: string;
     }
   }
 }

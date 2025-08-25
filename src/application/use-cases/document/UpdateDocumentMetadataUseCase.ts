@@ -3,16 +3,19 @@ import { AppResult, AppError, AppErrStatus } from '@carbonteq/hexapp';
 import type { ILogger } from '../../../shared/interfaces/ILogger.js';
 import type { DocumentRepositoryPort } from '../../ports/DocumentRepositoryPort.js';
 import type { UpdateDocumentMetadataInput, UpdateDocumentMetadataOutput } from '../../dto/document/UpdateMetadataDTO.js';
+import type { IObservabilityService } from '../../../shared/interfaces/IObservabilityService.js';
 
 @injectable()
 export class UpdateDocumentMetadataUseCase {
   constructor(
     @inject('DocumentRepositoryPort') private readonly docRepo: DocumentRepositoryPort,
     @inject('ILogger') private readonly logger: ILogger,
+    @inject('IObservabilityService') private readonly obs?: IObservabilityService,
   ) {}
 
   async execute(input: UpdateDocumentMetadataInput): Promise<AppResult<UpdateDocumentMetadataOutput>> {
-    this.logger.info('UseCase: UpdateDocumentMetadata - start', { id: input.id });
+    const run = async (): Promise<AppResult<UpdateDocumentMetadataOutput>> => {
+      this.logger.info('UseCase: UpdateDocumentMetadata - start', { id: input.id });
 
     const docRes = await this.docRepo.findById(input.id);
     if (docRes.isErr()) return AppResult.Err(AppError.Generic('Failed to load document'));
@@ -36,6 +39,11 @@ export class UpdateDocumentMetadataUseCase {
 
     const d = save.unwrap();
     return AppResult.Ok({ id: d.id, tags: d.tags, description: d.description });
+    };
+    if (this.obs && this.obs.isEnabled()) {
+      return await this.obs.startSegment('Custom/UseCase:UpdateDocumentMetadata', true, async () => run());
+    }
+    return await run();
   }
 }
 

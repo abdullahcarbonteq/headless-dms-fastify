@@ -10,8 +10,22 @@ import { PaginationOptions as HexPaginationOptions, Paginated as HexPaginated, A
 
 @injectable()
 export class DrizzleDocumentRepository implements DocumentRepositoryPort {
+  private deriveStorageInfo(storedPath: string): { storageProvider: string; externalKey: string | null } {
+    // s3://bucket/key, gcs://bucket/key, else fs path
+    if (storedPath.startsWith('s3://')) {
+      const key = storedPath.replace(/^s3:\/\/[a-zA-Z0-9._-]+\//, '');
+      return { storageProvider: 's3', externalKey: key };
+    }
+    if (storedPath.startsWith('gcs://')) {
+      const key = storedPath.replace(/^gcs:\/\/[a-zA-Z0-9._-]+\//, '');
+      return { storageProvider: 'gcs', externalKey: key };
+    }
+    // default fs
+    return { storageProvider: 'fs', externalKey: storedPath };
+  }
   async createDocument(docEntity: Document): Promise<AppResult<Document>> {
     try {
+      const storageInfo = this.deriveStorageInfo(docEntity.path);
       const [doc] = await db.insert(documents).values({
         id: docEntity.id,
         filename: docEntity.filename,
@@ -20,6 +34,8 @@ export class DrizzleDocumentRepository implements DocumentRepositoryPort {
         tags: JSON.stringify(docEntity.tags),
         description: docEntity.description,
         userId: docEntity.userId,
+        storageProvider: storageInfo.storageProvider,
+        externalKey: storageInfo.externalKey,
       }).returning();
       const documentResult = DocumentFactory.fromDatabaseRow(doc);
       if (documentResult.isErr()) return AppResult.Err(AppError.Generic('Failed to create document from database row'));
@@ -41,7 +57,7 @@ export class DrizzleDocumentRepository implements DocumentRepositoryPort {
     }
   }
 
-  async getAllDocuments(pagination?: HexPaginationOptions): Promise<AppResult<Document[] | HexPaginated<Document>>> {
+  async getAllDocuments(pagination?: HexPaginationOptions): Promise<AppResult<HexPaginated<Document>>> {
     try {
       if (pagination) {
         const offset = (pagination.pageNum - 1) * pagination.pageSize;
@@ -62,7 +78,9 @@ export class DrizzleDocumentRepository implements DocumentRepositoryPort {
         const docs = await db.select().from(documents);
         const documentEntitiesResult = DocumentFactory.fromDatabaseRows(docs);
         if (documentEntitiesResult.isErr()) return AppResult.Err(AppError.Generic('Failed to create documents from database rows'));
-        return AppResult.Ok(documentEntitiesResult.unwrap());
+        const items = documentEntitiesResult.unwrap();
+        const result: HexPaginated<Document> = { data: items, pageNum: 1, pageSize: items.length, totalPages: 1 };
+        return AppResult.Ok(result);
       }
     } catch (error) {
       return AppResult.Err(AppError.Generic('Failed to get all documents'));
@@ -79,7 +97,7 @@ export class DrizzleDocumentRepository implements DocumentRepositoryPort {
     }
   }
 
-  async searchDocuments(criteria: { tags?: string[]; description?: string; userId?: string }, pagination?: HexPaginationOptions): Promise<AppResult<Document[] | HexPaginated<Document>>> {
+  async searchDocuments(criteria: { tags?: string[]; description?: string; userId?: string }, pagination?: HexPaginationOptions): Promise<AppResult<HexPaginated<Document>>> {
     try {
       let whereClause = undefined as any;
       if (criteria.tags && criteria.tags.length > 0) {
@@ -119,7 +137,9 @@ export class DrizzleDocumentRepository implements DocumentRepositoryPort {
         const docs = whereClause ? await db.select().from(documents).where(whereClause) : await db.select().from(documents);
         const documentEntitiesResult = DocumentFactory.fromDatabaseRows(docs);
         if (documentEntitiesResult.isErr()) return AppResult.Err(documentEntitiesResult.unwrapErr());
-        return AppResult.Ok(documentEntitiesResult.unwrap());
+        const items = documentEntitiesResult.unwrap();
+        const result: HexPaginated<Document> = { data: items, pageNum: 1, pageSize: items.length, totalPages: 1 };
+        return AppResult.Ok(result);
       }
     } catch (error) {
       return AppResult.Err(error instanceof Error ? error : new Error('Failed to search documents'));

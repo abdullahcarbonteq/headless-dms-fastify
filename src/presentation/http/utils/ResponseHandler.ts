@@ -145,7 +145,7 @@ export class ResponseHandler {
    */
   static paginated<T>(
     reply: FastifyReply,
-    result: AppResult<T[] | HexPaginated<T>>
+    result: AppResult<HexPaginated<T>>
   ): FastifyReply {
     if (result.isErr()) {
       const error = result.unwrapErr();
@@ -154,52 +154,15 @@ export class ResponseHandler {
     }
 
     const data = result.unwrap();
-    
-    // Handle array data (no pagination) - return early to prevent crash
-    if (Array.isArray(data)) {
-      const pagination: PaginationInfo = {
-        pageNum: 1,
-        pageSize: data.length,
-        totalPages: 1,
-      };
-
-      const response: ApiResponse<T[]> = {
-        success: true,
-        data,
-        pagination,
-      };
-
-      return reply.status(200).send(response);
-    }
-
-    // Handle Hexapp Paginated type - add safety checks
-    if (data && typeof data === 'object' && 'data' in data && 'pageNum' in data) {
-      const pagination: PaginationInfo = {
-        pageNum: data.pageNum,
-        pageSize: data.pageSize,
-        totalPages: data.totalPages,
-      };
-
-      const response: ApiResponse<T[]> = {
-        success: true,
-        data: data.data,
-        pagination,
-      };
-
-      return reply.status(200).send(response);
-    }
-
-    // Fallback: treat as array to prevent crashes
-    const fallbackData = Array.isArray(data) ? data : [data];
     const pagination: PaginationInfo = {
-      pageNum: 1,
-      pageSize: fallbackData.length,
-      totalPages: 1,
+      pageNum: data.pageNum,
+      pageSize: data.pageSize,
+      totalPages: data.totalPages,
     };
 
     const response: ApiResponse<T[]> = {
       success: true,
-      data: fallbackData,
+      data: data.data,
       pagination,
     };
 

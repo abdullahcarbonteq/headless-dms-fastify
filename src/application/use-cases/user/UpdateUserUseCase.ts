@@ -35,6 +35,16 @@ export class UpdateUserUseCase {
     const user = existingRes.unwrap();
     if (!user) return AppResult.Err(AppError.NotFound('User not found'));
 
+    // Pre-check: if changing email, ensure the new email is not already used by another user
+    if (input.email) {
+      const byEmailRes = await this.userRepo.findByEmail(input.email);
+      if (byEmailRes.isErr()) return AppResult.Err(AppError.Generic('Failed to check email uniqueness'));
+      const other = byEmailRes.unwrap();
+      if (other && other.id !== user.id) {
+        return AppResult.Err(AppError.AlreadyExists('Email already in use'));
+      }
+    }
+
     let updated = user;
     if (input.name) {
       const r = updated.updateName(input.name);
@@ -60,7 +70,7 @@ export class UpdateUserUseCase {
     }
 
     const save = await this.userRepo.updateUser(updated);
-    if (save.isErr()) return AppResult.Err(AppError.Generic('Failed to update user'));
+    if (save.isErr()) return AppResult.Err(save.unwrapErr());
     const u = save.unwrap();
     return AppResult.Ok({ id: u.id, name: u.name, email: u.email, role: u.role });
   }

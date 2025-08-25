@@ -25,8 +25,7 @@ export class BusinessRuleService {
       if (user.isAdmin()) {
         const allUsersResult = await this.userRepository.getAllUsers();
         if (allUsersResult.isErr()) return AppResult.Err(AppError.Generic('Failed to get all users'));
-        const allUsersOrPage = allUsersResult.unwrap();
-        const allUsers = Array.isArray(allUsersOrPage) ? allUsersOrPage : allUsersOrPage.data;
+        const allUsers = allUsersResult.unwrap().data;
         const adminUsers = allUsers.filter((u) => u.isAdmin());
         if (adminUsers.length === 1 && adminUsers[0].id === user.id) {
           this.logger.warn('Attempted to delete the last admin user', { userId: user.id });
@@ -46,8 +45,7 @@ export class BusinessRuleService {
       if (user.id === requestingUserId && newRole === 'user' && user.isAdmin()) {
         const allUsersResult = await this.userRepository.getAllUsers();
         if (allUsersResult.isErr()) return AppResult.Err(AppError.Generic('Failed to get all users'));
-        const allUsersOrPage = allUsersResult.unwrap();
-        const allUsers = Array.isArray(allUsersOrPage) ? allUsersOrPage : allUsersOrPage.data;
+        const allUsers = allUsersResult.unwrap().data;
         const adminUsers = allUsers.filter((u) => u.isAdmin());
         if (adminUsers.length === 1 && adminUsers[0].id === user.id) {
           this.logger.warn('Attempted to demote the last admin user', { userId: user.id });

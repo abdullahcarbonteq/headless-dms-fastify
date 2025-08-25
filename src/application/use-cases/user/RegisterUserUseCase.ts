@@ -17,6 +17,15 @@ export class RegisterUserUseCase {
   async execute(input: RegisterUserInput): Promise<AppResult<RegisterUserOutput>> {
     this.logger.info('UseCase: RegisterUser - start', { email: input.email });
 
+    // Pre-check: reject if email already exists to return a clear 409 before hashing/creation
+    const existingRes = await this.userRepo.findByEmail(input.email);
+    if (existingRes.isErr()) {
+      return AppResult.Err(AppError.Generic('Failed to check existing user by email'));
+    }
+    if (existingRes.unwrap()) {
+      return AppResult.Err(AppError.AlreadyExists('Email already registered'));
+    }
+
     const hashRes = await this.auth.hashPassword(input.password);
     if (hashRes.isErr()) {
       return AppResult.Err(AppError.Generic('Failed to hash password'));
@@ -34,7 +43,8 @@ export class RegisterUserUseCase {
 
     const createRes = await this.userRepo.createUser(entityRes.unwrap());
     if (createRes.isErr()) {
-      return AppResult.Err(AppError.Generic('Failed to create user'));
+      // Preserve repository error (e.g., AlreadyExists -> 409)
+      return AppResult.Err(createRes.unwrapErr());
     }
 
     const u = createRes.unwrap();

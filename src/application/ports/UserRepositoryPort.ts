@@ -7,7 +7,7 @@ export interface UserRepositoryPort {
   findById(id: string): Promise<AppResult<User | null>>;
   updateUser(user: User): Promise<AppResult<User>>;
   deleteUser(id: string): Promise<AppResult<boolean>>;
-  getAllUsers(pagination?: HexPaginationOptions): Promise<AppResult<User[] | HexPaginated<User>>>;
+  getAllUsers(pagination?: HexPaginationOptions): Promise<AppResult<HexPaginated<User>>>;
 }
 
 export type { User };

@@ -90,13 +90,13 @@ fi
 if [ -n "$UPLOADED_DOC_ID" ]; then
   echo "9️⃣ Update document metadata (auth)"
   curl -s -X PUT "$BASE_URL/api/documents/$UPLOADED_DOC_ID/metadata" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
     -d '{"description":"Updated from script","tags":["test","updated"]}' | jq '.'
   echo "   Invalid body (expect 400)"
   curl -s -X PUT "$BASE_URL/api/documents/$UPLOADED_DOC_ID/metadata" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
     -d '{"filename":"not-allowed-here"}' | jq '.'
   echo ""
 fi

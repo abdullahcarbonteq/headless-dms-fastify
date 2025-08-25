@@ -46,6 +46,14 @@ function loadConfig(): Config {
         maxFiles: process.env.MAX_FILES ?? process.env.UPLOAD_MAX_FILES,
       },
     },
+    storage: {
+      provider: process.env.STORAGE_PROVIDER,
+      timeoutMs: {
+        save: process.env.STORAGE_TIMEOUT_SAVE_MS,
+        remove: process.env.STORAGE_TIMEOUT_REMOVE_MS,
+      },
+      strategy: process.env.MULTI_STORAGE_RULES ? JSON.parse(process.env.MULTI_STORAGE_RULES) : undefined,
+    },
   };
 
   // Validate configuration

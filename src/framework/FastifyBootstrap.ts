@@ -11,12 +11,14 @@ import { ILogger } from '../shared/interfaces/ILogger.js';
 import { IConfigurationService } from '../shared/interfaces/IConfigurationService.js';
 import { RequestContextService } from './services/RequestContextService.js';
 import { closeDatabase, pingDatabase } from '../infrastructure/persistence/db.js';
+import type { IObservabilityService } from '../shared/interfaces/IObservabilityService.js';
 
   /** Fastify framework bootstrapping (kept framework concerns isolated) */
 export class FastifyBootstrap {
   private app: FastifyInstance;
   private logger: ILogger;
   private config: IConfigurationService;
+  private obs?: IObservabilityService;
 
   constructor(logger: ILogger, config: IConfigurationService) {
     this.logger = logger;
@@ -33,6 +35,11 @@ export class FastifyBootstrap {
       keepAliveTimeout: 5000, // 5 seconds
       maxRequestsPerSocket: 100, // Limit requests per connection
       disableRequestLogging: true, // We handle logging ourselves
+    });
+
+    // Resolve observability lazily to avoid circulars
+    import('../infrastructure/bootstrap/container.js').then(({ container }) => {
+      try { this.obs = container.resolve<IObservabilityService>('IObservabilityService'); } catch {}
     });
 
     app.addHook('onClose', async (instance) => {
@@ -80,6 +87,18 @@ export class FastifyBootstrap {
         
         this.logger.info(`📤 ${logMessage}`, metadata);
       }
+    });
+
+    // Web transaction wrapper: name by method + route
+    app.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!this.obs || !this.obs.isEnabled()) return;
+      const routeName = `${request.method} ${request.routeOptions?.url ?? request.url}`;
+      // Start a web transaction and stash a closer on the request
+      const agent: any = (this.obs as any).agent;
+      if (agent && typeof agent.setTransactionName === 'function') {
+        try { agent.setTransactionName(routeName); } catch {}
+      }
+      this.obs.addCustomAttributes({ route: routeName });
     });
 
     return app;

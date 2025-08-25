@@ -20,12 +20,21 @@ export interface AppConfig {
   upload: { maxFileSize: number; allowedMimeTypes?: string[]; uploadDir: string; maxFiles: number };
 }
 
+export type StorageProvider = 'fs' | 's3' | 'gcs' | 'azure' | 'multi';
+
+export interface StorageConfig {
+  provider: StorageProvider;
+  timeoutMs: { save: number; remove: number };
+  strategy?: { rules?: unknown; fallback?: StorageProvider[] };
+}
+
 
 export interface IConfigurationService {
   get app(): AppConfig; //get application configuration
   get database(): DatabaseConfig;
   get jwt(): JWTConfig;
   get server(): ServerConfig;
+  get storage(): StorageConfig;
   validate(): void; //validate configuration at run time
-  getAll(): any;
+  getAll(): { app: AppConfig; database: DatabaseConfig; jwt: JWTConfig; server: ServerConfig; storage: StorageConfig };
 } 

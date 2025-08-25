@@ -25,6 +25,11 @@ export class DrizzleUserRepository implements UserRepositoryPort {
       }
       return AppResult.Ok(userResult.unwrap());
     } catch (error) {
+      // Map unique constraint violation to a clearer domain error
+      const code = (error as any)?.code ?? (error as any)?.cause?.code;
+      if (code === '23505') {
+        return AppResult.Err(AppError.AlreadyExists('Email already registered'));
+      }
       return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to create user'));
     }
   }
@@ -70,6 +75,10 @@ export class DrizzleUserRepository implements UserRepositoryPort {
       if (userResult.isErr()) return AppResult.Err(AppError.Generic(userResult.unwrapErr().message));
       return AppResult.Ok(userResult.unwrap());
     } catch (error) {
+      const code = (error as any)?.code ?? (error as any)?.cause?.code;
+      if (code === '23505') {
+        return AppResult.Err(AppError.AlreadyExists('Email already in use'));
+      }
       return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to update user'));
     }
   }
@@ -84,7 +93,7 @@ export class DrizzleUserRepository implements UserRepositoryPort {
     }
   }
 
-  async getAllUsers(pagination?: HexPaginationOptions): Promise<AppResult<User[] | HexPaginated<User>>> {
+  async getAllUsers(pagination?: HexPaginationOptions): Promise<AppResult<HexPaginated<User>>> {
     try {
       if (pagination) {
         const offset = (pagination.pageNum - 1) * pagination.pageSize;
@@ -111,7 +120,9 @@ export class DrizzleUserRepository implements UserRepositoryPort {
         const userRows = await db.select().from(users);
         const entitiesResult = UserFactory.fromDatabaseRows(userRows);
         if (entitiesResult.isErr()) return AppResult.Err(AppError.Generic(entitiesResult.unwrapErr().message));
-        return AppResult.Ok(entitiesResult.unwrap());
+        const items = entitiesResult.unwrap();
+        const result: HexPaginated<User> = { data: items, pageNum: 1, pageSize: items.length, totalPages: 1 };
+        return AppResult.Ok(result);
       }
     } catch (error) {
       return AppResult.Err(AppError.Generic(error instanceof Error ? error.message : 'Failed to get all users'));
